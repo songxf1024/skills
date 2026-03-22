@@ -1,13 +1,17 @@
 ---
 name: edit-snapshot
-description: Protect workspace file edits with local git snapshots before and after changes, then show recent history and rollback guidance.
-version: 1.4.0
+description: Safety checkpoint for any workspace mutation. Use before creating files, editing files, applying patches, overwriting content, refactoring, code generation, config changes, renames, deletes, or shell commands that write files. Create a local git snapshot before the first mutation, then show recent history and rollback guidance after the change.
+version: 1.4.1
 metadata: {"openclaw":{"requires":{"bins":["git"],"anyBins":["bash","sh"]},"emoji":"🛟"}}
 ---
 
 # Edit Snapshot
 
-Use this skill whenever the current task is going to modify files in the workspace.
+Use this skill whenever the current task might write, create, overwrite, rename, delete, or otherwise mutate workspace files.
+
+This is a safety skill.
+Prefer using it too often rather than skipping it when a write is about to happen.
+Even small or simple tasks such as creating one script, updating one config value, or applying one quick patch should use it before the first mutation.
 
 ## What this skill does
 
@@ -15,6 +19,21 @@ This skill adds a lightweight git safety layer around file changes.
 
 Before the first write, it creates or records a recovery point.
 After the task finishes, it records the result when needed, shows recent commits, and tells the user that rollback is available.
+
+## High-priority trigger cues
+
+Use this skill before the first mutation for any task that includes signals like these:
+
+- create a file, script, config, test, migration, or document
+- edit, update, modify, change, patch, rewrite, or overwrite a file
+- apply_patch or any multi-file patching workflow
+- refactor, rename, move, or delete files
+- generate code, templates, artifacts, or outputs into the workspace
+- run shell commands that write files, change configs, or regenerate outputs
+- make "just a small change" or "just create a quick script"
+
+If the task might write files and you are unsure, use this skill.
+False positives are acceptable. Missing the safety snapshot is worse.
 
 ## When to use it
 
@@ -52,6 +71,7 @@ Examples:
 
 - `fix login validation`
 - `refactor config loader`
+- `create weather query script`
 - `update skill metadata`
 
 ### 2. Perform the edits
@@ -78,6 +98,7 @@ Always tell the user:
 
 - what the PRE snapshot is
 - whether a POST commit was created
+- the repo root that was used
 - the most recent 3 to 5 commits
 - that rollback is supported
 - the safest rollback command for this task
@@ -87,6 +108,7 @@ Always tell the user:
 ```text
 已完成本次修改，并已做 git 保护。
 
+仓库: <repo_root>
 PRE 快照: <sha> <subject>
 POST 快照: <sha or none> <subject or reason>
 最近提交:
@@ -116,6 +138,7 @@ git revert <post_sha>
 - Never hide failures.
 - If PRE fails, stop risky edits and tell the user.
 - If no PRE snapshot exists for the current edit session, do not run POST silently.
+- Say which repo root was used so the user can see where the snapshot was recorded.
 
 ## Commit policy
 
@@ -147,9 +170,9 @@ This keeps history useful without creating unnecessary empty commits.
 If the helper script is unavailable, use:
 
 ```bash
-git rev-parse --is-inside-work-tree || git init
-if ! git config user.name >/dev/null; then git config user.name "OpenClaw Guard"; fi
-if ! git config user.email >/dev/null; then git config user.email "openclaw@local.invalid"; fi
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || git init -q
+if ! git config user.name >/dev/null 2>&1; then git config user.name "OpenClaw Guard"; fi
+if ! git config user.email >/dev/null 2>&1; then git config user.email "openclaw@local.invalid"; fi
 
 git add -A
 if ! git diff --cached --quiet; then git commit -m "guard(pre): <reason>"; fi
