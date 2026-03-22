@@ -1,0 +1,67 @@
+# Guarded Edit default exclusions
+# This file uses gitignore-style patterns.
+# Repo-local override: {repoRoot}/.guarded-edit-ignore
+
+# Git internals
+.git/
+.gitmodules
+
+# Dependencies and caches
+node_modules/
+vendor/
+.pnpm-store/
+.yarn/
+.npm/
+.cache/
+
+# Build and generated outputs
+dist/
+build/
+out/
+target/
+coverage/
+.next/
+.nuxt/
+.svelte-kit/
+
+# Python caches and virtualenvs
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.crt
+
+# Logs and temporary files
+*.log
+*.pid
+tmp/
+temp/
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Archives and common binary artifacts
+*.zip
+*.tar
+*.gz
+*.tgz
+*.7z
+*.rar
+*.dll
+*.dylib
+*.exe
+*.so
