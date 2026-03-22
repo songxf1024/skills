@@ -1,15 +1,18 @@
 ---
 name: edit-snapshot
-description: Safety checkpoint for any workspace mutation. Use before creating files, editing files, applying patches, overwriting content, refactoring, code generation, config changes, renames, deletes, or shell commands that write files. Create a local git snapshot before the first mutation, then show recent history and rollback guidance after the change.
-version: 1.4.1
+description: Mandatory before any workspace write. Use before creating a file, script, config, test, or document; editing, patching, overwriting, refactoring, renaming, moving, or deleting files; generating code or artifacts; changing configs; or running write-capable shell commands. Do not skip for small tasks. Create a local git snapshot before the first write, then show recent history and rollback guidance after the change.
+version: 1.0.0
 metadata: {"openclaw":{"requires":{"bins":["git"],"anyBins":["bash","sh"]},"emoji":"🛟"}}
 ---
 
 # Edit Snapshot
 
+If you are about to create, edit, patch, overwrite, rename, move, or delete any workspace file, stop and use this skill before the first write.
+
 Use this skill whenever the current task might write, create, overwrite, rename, delete, or otherwise mutate workspace files.
 
 This is a safety skill.
+Do not decide based on perceived risk, task size, or how easy the file would be to recreate.
 Prefer using it too often rather than skipping it when a write is about to happen.
 Even small or simple tasks such as creating one script, updating one config value, or applying one quick patch should use it before the first mutation.
 
@@ -22,6 +25,7 @@ After the task finishes, it records the result when needed, shows recent commits
 
 ## High-priority trigger cues
 
+Treat these as mechanical trigger cues, not judgment calls.
 Use this skill before the first mutation for any task that includes signals like these:
 
 - create a file, script, config, test, migration, or document
@@ -53,6 +57,7 @@ Do not use it for read-only inspection, explanation-only tasks, search, grep, or
 ## Task rule
 
 For one user request, create one PRE snapshot before the first mutation.
+Do not skip PRE just because the task looks trivial, low-risk, easy to redo, or limited to one small file.
 
 Do not create a new PRE snapshot before every file in the same task.
 Only start a new PRE snapshot when the previous edit batch is already finished and reported.

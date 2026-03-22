@@ -108,23 +108,6 @@
 
 这意味着如果仓库在任务开始前本来就是脏的，PRE 快照可能会把已有未提交改动一起保存进去。非 `.gitignore` 的新增文件、生成物、二进制文件，以及误放到工作区的敏感文件，也可能被一起纳入快照。
 
-## 安装与验证
-
-安装到下面任一位置。
-
-- `<workspace>/skills/edit-snapshot/`
-- `~/.openclaw/skills/edit-snapshot/`
-
-安装或更新后，优先开一个新会话测试。
-
-```bash
-openclaw skills list
-openclaw skills info edit-snapshot
-openclaw skills check
-```
-
-如果启用了 skills watcher，`SKILL.md` 的变更通常会在下一次 agent turn 刷新。
-
 ## 推荐回退命令
 
 ```bash
