@@ -26,8 +26,9 @@
 
 它会检查这次操作是否真的带来了新的工作区变化。
 
-- 如果有新改动，就创建一个 `guard(post)` 本地提交作为结果快照
+- 如果存在有效的 PRE 快照并且有新改动，就创建一个 `guard(post)` 本地提交作为结果快照
 - 如果没有新改动，就不创建无意义提交，而是明确报告这次没有新增快照
+- 如果当前会话没有先执行 `pre`，它不会静默继续，而是直接报错提醒先建立修改前恢复点
 
 ### 3. 把历史和回退方式告诉用户
 
@@ -65,16 +66,16 @@
 脚本入口在。
 
 ```bash
-./skills/edit-snapshot/scripts/helper.sh
+{baseDir}/scripts/helper.sh
 ```
 
 它支持四个子命令。
 
 ```bash
-./skills/edit-snapshot/scripts/helper.sh pre "reason"
-./skills/edit-snapshot/scripts/helper.sh post "reason"
-./skills/edit-snapshot/scripts/helper.sh recent 5
-./skills/edit-snapshot/scripts/helper.sh rollback-help
+{baseDir}/scripts/helper.sh pre "reason"
+{baseDir}/scripts/helper.sh post "reason"
+{baseDir}/scripts/helper.sh recent 5
+{baseDir}/scripts/helper.sh rollback-help
 ```
 
 ### `pre`
@@ -87,7 +88,7 @@
 - 检查当前仓库是否配置了 repo-local 的 `user.name` 和 `user.email`
 - 判断当前工作区和暂存区是否有未提交改动
 - 在必要时把当前现场保存为 `guard(pre)` 提交
-- 把本次会话的 PRE 信息写到 `.git/.git-guard/last-session.env`
+- 把本次会话的 PRE 信息写到 `.git/.edit-snapshot/last-session.env`
 
 ### `post`
 
@@ -96,6 +97,7 @@
 它会完成下面这些动作。
 
 - 读取前一步写入的 session 信息
+- 如果没有有效的 PRE 快照，直接报错并停止
 - 检查当前工作区是否还有新的未提交变化
 - 在必要时创建 `guard(post)` 提交
 - 如果没有新变化，则只报告 `POST_NONE`
@@ -133,7 +135,21 @@
 
 这意味着 PRE 快照未必只包含“本次任务”的内容，也可能包含任务开始前就已经存在、但尚未提交的本地修改。
 
+此外，未被 `.gitignore` 忽略的新增文件、生成物、二进制文件，甚至误放进工作区的敏感文件，也可能一起进入快照。因此在大仓库或包含生成目录的项目里，最好先确认 `.gitignore` 是否合理。
+
 这是这版 skill 的有意设计。它优先保护现场，避免在继续写文件时把已有内容一起覆盖或冲散。
+
+## 安装后验证
+
+安装完成后，建议先做一次最小检查。
+
+```bash
+openclaw skills list
+openclaw skills info edit-snapshot
+openclaw skills check
+```
+
+这样可以确认 skill 已被识别，并且本机满足基本依赖。
 
 ## 建议的用户回报格式
 

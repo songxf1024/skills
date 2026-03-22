@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STATE_DIR=".git/.git-guard"
+STATE_DIR=".git/.edit-snapshot"
 STATE_FILE="$STATE_DIR/last-session.env"
 
 command_name="${1:-}"
@@ -18,7 +18,7 @@ need_git_repo() {
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     return 0
   fi
-  git init >/dev/null
+  git init -q >/dev/null
 }
 
 ensure_identity() {
@@ -73,6 +73,15 @@ load_state() {
   return 1
 }
 
+require_pre_state() {
+  if ! load_state; then
+    fail "no PRE snapshot found for this edit session. Run: $0 pre \"reason\""
+  fi
+  if [ -z "${PRE_SHA:-}" ]; then
+    fail "PRE snapshot state is incomplete. Run: $0 pre \"reason\""
+  fi
+}
+
 create_commit() {
   local message="$1"
   git commit -m "$message" >/dev/null
@@ -92,6 +101,7 @@ pre() {
         full_head="$(current_head_full)"
         short_head="$(current_head)"
         PRE_SHA="$full_head"
+        POST_SHA=""
         write_state
         echo "PRE_REUSED $short_head $(git log -1 --pretty=%s)"
         return 0
@@ -100,6 +110,7 @@ pre() {
       full_head="$(current_head_full)"
       short_head="$(current_head)"
       PRE_SHA="$full_head"
+      POST_SHA=""
       write_state
       echo "PRE_COMMIT $short_head $(git log -1 --pretty=%s)"
       return 0
@@ -108,6 +119,7 @@ pre() {
     full_head="$(current_head_full)"
     short_head="$(current_head)"
     PRE_SHA="$full_head"
+    POST_SHA=""
     write_state
     echo "PRE_REUSED $short_head $(git log -1 --pretty=%s)"
     return 0
@@ -127,6 +139,7 @@ pre() {
   full_head="$(current_head_full)"
   short_head="$(current_head)"
   PRE_SHA="$full_head"
+  POST_SHA=""
   write_state
   echo "PRE_INIT $short_head $(git log -1 --pretty=%s)"
 }
@@ -135,7 +148,7 @@ post() {
   need_git_repo
   ensure_identity
   ensure_state_dir
-  load_state || true
+  require_pre_state
 
   if worktree_dirty; then
     stage_all
@@ -145,7 +158,6 @@ post() {
     fi
     create_commit "guard(post): $reason"
     POST_SHA="$(current_head_full)"
-    PRE_SHA="${PRE_SHA:-}"
     write_state
     echo "POST_COMMIT $(git rev-parse --short HEAD) $(git log -1 --pretty=%s)"
     return 0
@@ -160,6 +172,10 @@ recent() {
   if ! [[ "$count" =~ ^[0-9]+$ ]]; then
     count=5
   fi
+  if ! has_head; then
+    echo "No commits yet"
+    return 0
+  fi
   git log --date=short --pretty=format:'%h | %ad | %s' -n "$count"
 }
 
@@ -167,9 +183,11 @@ rollback_help() {
   need_git_repo
   if load_state; then
     echo "Rollback help"
-    echo "PRE_SHA=${PRE_SHA:-none}"
-    echo "POST_SHA=${POST_SHA:-none}"
+    if [ -n "${PRE_SHA:-}" ]; then
+      echo "PRE_SHA=${PRE_SHA}"
+    fi
     if [ -n "${POST_SHA:-}" ]; then
+      echo "POST_SHA=${POST_SHA}"
       echo "Preview result diff: git diff ${PRE_SHA}..${POST_SHA}"
       echo "Non-destructive rollback: git revert ${POST_SHA}"
     fi

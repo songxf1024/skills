@@ -27,11 +27,11 @@
 ## 常用命令
 
 ```bash
-./skills/edit-snapshot/scripts/helper.sh pre "本次修改原因"
+{baseDir}/scripts/helper.sh pre "本次修改原因"
 # 这里执行实际修改
-./skills/edit-snapshot/scripts/helper.sh post "本次修改原因"
-./skills/edit-snapshot/scripts/helper.sh recent 5
-./skills/edit-snapshot/scripts/helper.sh rollback-help
+{baseDir}/scripts/helper.sh post "本次修改原因"
+{baseDir}/scripts/helper.sh recent 5
+{baseDir}/scripts/helper.sh rollback-help
 ```
 
 ## 什么时候适合用
@@ -59,6 +59,16 @@
 它的重点是给修改过程加保护，而不是接管完整的 Git 协作流程。所以它不会替您自动做完整的版本管理决策，只会把恢复点和回退线索准备好。
 
 另外，如果任务开始前仓库本来就已经有未提交改动，那么修改前快照会把这些现有改动一起保存进去。这么做是为了先保护现场。
+
+还有一点也值得注意。未被 `.gitignore` 忽略的新增文件、生成物、二进制文件，甚至误放进工作区的敏感文件，也可能一起被保存到快照里。
+
+## 安装后怎么确认可用
+
+```bash
+openclaw skills list
+openclaw skills info edit-snapshot
+openclaw skills check
+```
 
 ## 回退时常见会看到的命令
 

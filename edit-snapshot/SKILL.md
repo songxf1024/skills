@@ -1,16 +1,8 @@
 ---
 name: edit-snapshot
-description: Add a git safety snapshot before workspace edits, then show recent history and rollback guidance after the task finishes.
-version: 1.3.0
-metadata:
-  openclaw:
-    requires:
-      bins:
-        - git
-      anyBins:
-        - bash
-        - sh
-    emoji: "🛟"
+description: Protect workspace file edits with local git snapshots before and after changes, then show recent history and rollback guidance.
+version: 1.4.0
+metadata: {"openclaw":{"requires":{"bins":["git"],"anyBins":["bash","sh"]},"emoji":"🛟"}}
 ---
 
 # Edit Snapshot
@@ -53,7 +45,7 @@ Only start a new PRE snapshot when the previous edit batch is already finished a
 Run:
 
 ```bash
-./skills/edit-snapshot/scripts/helper.sh pre "<short reason>"
+{baseDir}/scripts/helper.sh pre "<short reason>"
 ```
 
 Examples:
@@ -75,9 +67,9 @@ Run tests, linters, type checks, or a focused sanity check when the task warrant
 Run:
 
 ```bash
-./skills/edit-snapshot/scripts/helper.sh post "<short reason>"
-./skills/edit-snapshot/scripts/helper.sh recent 5
-./skills/edit-snapshot/scripts/helper.sh rollback-help
+{baseDir}/scripts/helper.sh post "<short reason>"
+{baseDir}/scripts/helper.sh recent 5
+{baseDir}/scripts/helper.sh rollback-help
 ```
 
 ### 5. Report back to the user
@@ -118,10 +110,12 @@ git revert <post_sha>
 - If the current directory is not a git repository, initialize one automatically.
 - If git identity is missing, set repo-local `user.name` and `user.email`.
 - Respect `.gitignore`.
+- Non-ignored new files, generated artifacts, binaries, and accidentally placed sensitive files may also be included in the snapshot.
 - Never push unless the user explicitly asked.
 - Never rewrite history unless the user explicitly asked.
 - Never hide failures.
 - If PRE fails, stop risky edits and tell the user.
+- If no PRE snapshot exists for the current edit session, do not run POST silently.
 
 ## Commit policy
 
@@ -133,6 +127,7 @@ git revert <post_sha>
 
 ### POST step
 
+- Only run POST after a valid PRE snapshot for the same edit session exists.
 - If the task produced new changes, commit them as a POST snapshot.
 - If nothing changed after the task, report that no POST commit was needed.
 
@@ -141,10 +136,10 @@ This keeps history useful without creating unnecessary empty commits.
 ## Preferred commands
 
 ```bash
-./skills/edit-snapshot/scripts/helper.sh pre "reason"
-./skills/edit-snapshot/scripts/helper.sh post "reason"
-./skills/edit-snapshot/scripts/helper.sh recent 5
-./skills/edit-snapshot/scripts/helper.sh rollback-help
+{baseDir}/scripts/helper.sh pre "reason"
+{baseDir}/scripts/helper.sh post "reason"
+{baseDir}/scripts/helper.sh recent 5
+{baseDir}/scripts/helper.sh rollback-help
 ```
 
 ## Fallback manual commands
