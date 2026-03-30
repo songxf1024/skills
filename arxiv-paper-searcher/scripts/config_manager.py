@@ -23,11 +23,22 @@ from zoneinfo import ZoneInfo
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 DEFAULT_MAX_RESULTS = 20
 DEFAULT_SORT = "date"
-CRON_FIELD_PATTERN = re.compile(r"^[\w\-*/,?LW#]+$")
-
+# CRON_FIELD_PATTERN = re.compile(r"^[\w\-*/,?LW#]+$")
+CRON_FIELD_SPECS = [
+    ("分钟", 0, 59),
+    ("小时", 0, 23),
+    ("日", 1, 31),
+    ("月", 1, 12),
+    ("星期", 0, 7),
+]
 
 def resolve_config_dir() -> str:
-    """优先使用技能目录，其次回退到用户家目录下的标准路径。"""
+    """解析配置目录，优先环境变量，其次推断技能目录，最后回退到标准路径。"""
+    # 允许通过环境变量覆盖，方便测试或部署
+    env_root = os.environ.get("OPENCLAW_SKILL_ROOT")
+    if env_root:
+        return os.path.abspath(os.path.expanduser(env_root))
+    
     current_file = os.path.abspath(__file__)
     current_dir = os.path.dirname(current_file)
     parent_dir = os.path.dirname(current_dir)
@@ -36,13 +47,8 @@ def resolve_config_dir() -> str:
     if os.path.basename(current_dir) == "scripts":
         return parent_dir
 
-    # 允许通过环境变量覆盖，方便测试或部署
-    env_root = os.environ.get("OPENCLAW_SKILL_ROOT")
-    if env_root:
-        return os.path.abspath(os.path.expanduser(env_root))
-
     # 默认回退到 skill.md 中约定的标准目录
-    return os.path.expanduser("~/.openclaw/skills/arxiv-paper-searcher")
+    return os.path.expanduser("~/.openclaw/workspace/skills/arxiv-paper-searcher")
 
 
 CONFIG_DIR = resolve_config_dir()
@@ -62,6 +68,35 @@ def validate_positive_int(value: str) -> int:
         raise argparse.ArgumentTypeError("论文数量必须大于 0")
     return ivalue
 
+def _validate_cron_value(token: str, min_value: int, max_value: int, field_name: str) -> None:
+    if not token.isdigit(): raise argparse.ArgumentTypeError(f"{field_name}字段包含非法值：{token}")
+    value = int(token)
+    if value < min_value or value > max_value:
+        raise argparse.ArgumentTypeError(f"{field_name}字段超出范围：{value}，允许范围 {min_value}-{max_value}")
+
+def _validate_cron_item(item: str, min_value: int, max_value: int, field_name: str) -> None:
+    if not item: raise argparse.ArgumentTypeError(f"{field_name}字段不能为空项")
+    if "/" in item:
+        base, step = item.split("/", 1)
+        if not step.isdigit() or int(step) <= 0: raise argparse.ArgumentTypeError(f"{field_name}字段步长非法：{item}")
+        if base == "*": return
+        if "-" in base:
+            start, end = base.split("-", 1)
+            _validate_cron_value(start, min_value, max_value, field_name)
+            _validate_cron_value(end, min_value, max_value, field_name)
+            if int(start) > int(end): raise argparse.ArgumentTypeError(f"{field_name}字段范围非法：{item}")
+            return
+        _validate_cron_value(base, min_value, max_value, field_name)
+        return
+    if item == "*": return
+    if "-" in item:
+        start, end = item.split("-", 1)
+        _validate_cron_value(start, min_value, max_value, field_name)
+        _validate_cron_value(end, min_value, max_value, field_name)
+        if int(start) > int(end): raise argparse.ArgumentTypeError(f"{field_name}字段范围非法：{item}")
+        return
+    _validate_cron_value(item, min_value, max_value, field_name)
+
 
 def validate_cron(expr: str) -> str:
     """
@@ -69,11 +104,10 @@ def validate_cron(expr: str) -> str:
     这里按 5 段 cron 处理，适合常见分钟 小时 日 月 星期表达式。
     """
     parts = expr.strip().split()
-    if len(parts) != 5:
-        raise argparse.ArgumentTypeError("cron 表达式必须是 5 段，例如：0 9 * * *")
-    for part in parts:
-        if not CRON_FIELD_PATTERN.fullmatch(part):
-            raise argparse.ArgumentTypeError(f"非法 cron 字段：{part}")
+    if len(parts) != 5: raise argparse.ArgumentTypeError("cron 表达式必须是 5 段，例如：0 9 * * *")
+    for part, (field_name, min_value, max_value) in zip(parts, CRON_FIELD_SPECS):
+        items = part.split(",")
+        for item in items: _validate_cron_item(item, min_value, max_value, field_name)
     return expr
 
 

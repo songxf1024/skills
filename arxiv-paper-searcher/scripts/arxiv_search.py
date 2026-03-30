@@ -49,9 +49,17 @@ def positive_int(value: str) -> int:
 def normalize_sort(sort: str) -> arxiv.SortCriterion:
     mapping = {
         "date": arxiv.SortCriterion.SubmittedDate,
+        "updated": arxiv.SortCriterion.LastUpdatedDate,
         "relevance": arxiv.SortCriterion.Relevance,
     }
     return mapping[sort]
+
+
+def format_result_datetime(dt: datetime | None) -> str | None:
+    """保留完整时间戳；若有时区信息则转为 Asia/Shanghai。"""
+    if dt is None: return None
+    if dt.tzinfo is not None: dt = dt.astimezone(CHINA_TZ)
+    return dt.isoformat(timespec="seconds")
 
 
 def search_papers(query: str, max_results: int = DEFAULT_MAX_RESULTS, sort: str = "date") -> List[Dict[str, Any]]:
@@ -61,7 +69,7 @@ def search_papers(query: str, max_results: int = DEFAULT_MAX_RESULTS, sort: str 
     Args:
         query: 搜索关键词（支持 arXiv 语法）
         max_results: 最大结果数
-        sort: 排序方式，支持 date / relevance
+        sort: 排序方式，支持 date / updated / relevance
 
     Returns:
         论文列表
@@ -83,16 +91,17 @@ def search_papers(query: str, max_results: int = DEFAULT_MAX_RESULTS, sort: str 
 
     papers: List[Dict[str, Any]] = []
     for result in client.results(search):
+        published_at = format_result_datetime(result.published)
+        updated_at = format_result_datetime(result.updated)
+        
         papers.append(
             {
                 "title": result.title.strip(),
                 "authors": [author.name for author in result.authors],
-                "published": result.published.astimezone(CHINA_TZ).date().isoformat()
-                if result.published.tzinfo
-                else result.published.date().isoformat(),
-                "updated": result.updated.astimezone(CHINA_TZ).date().isoformat()
-                if result.updated and result.updated.tzinfo
-                else (result.updated.date().isoformat() if result.updated else None),
+                "published": published_at,
+                "updated": updated_at,
+                "published_date": published_at[:10] if published_at else None,
+                "updated_date": updated_at[:10] if updated_at else None,
                 "summary": " ".join(result.summary.split()),
                 "pdf_url": result.pdf_url,
                 "entry_id": result.entry_id,
@@ -131,7 +140,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--query", "-q", required=True, help="搜索关键词")
     parser.add_argument("--max", "-m", type=positive_int, default=DEFAULT_MAX_RESULTS, help=f"最大结果数，1-{MAX_RESULTS_LIMIT}")
     parser.add_argument("--output", "-o", default=None, help="输出文件路径，可只写文件名")
-    parser.add_argument("--sort", "-s", choices=["date", "relevance"], default="date", help="排序方式")
+    parser.add_argument("--sort", "-s", choices=["date", "updated", "relevance"], default="date", help="排序方式")
     return parser
 
 
@@ -164,15 +173,15 @@ def main() -> int:
 
         for i, paper in enumerate(papers, 1):
             authors_preview = ", ".join(paper["authors"][:3])
-            if len(paper["authors"]) > 3:
-                authors_preview += " et al."
+            if len(paper["authors"]) > 3: authors_preview += " et al."
 
             categories_preview = ", ".join(paper["categories"][:3]) if paper["categories"] else "N/A"
             link = paper["pdf_url"] or paper["entry_id"]
+            display_date = paper.get("published_date") or (paper["published"][:10] if paper.get("published") else "N/A")
 
             print(f"{i}. {paper['title']}")
             print(f"   作者：{authors_preview}")
-            print(f"   时间：{paper['published']}")
+            print(f"   时间：{display_date}")
             print(f"   分类：{categories_preview}")
             print(f"   链接：{link}")
             print()

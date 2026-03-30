@@ -4,7 +4,7 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 ---
 
 # arXiv Paper Searcher
-**版本**：v1.0.0
+**版本**：v1.0.1
 
 用于搜索、整理并分析 arXiv 学术论文的技能。
 
@@ -102,7 +102,7 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 
 **Step 3：创建任务**
 
-- 使用 cron 工具创建定时任务
+- 使用 cron scheduler 工具创建定时任务
 - 将检索配置写入 `config.json`
 - 告知用户任务已创建成功
 
@@ -226,11 +226,11 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 ### 基本用法
 
 ```bash
-python ~/.openclaw/skills/arxiv-paper-searcher/scripts/arxiv_search.py \
+python ~/.openclaw/workspace/skills/arxiv-paper-searcher/scripts/arxiv_search.py \
   -q "ti:gnn OR ti:\"graph neural network\"" \
   -m 20 \
   -s date \
-  -o ~/openclaw/workspace/temp/papers.json
+  -o ~/openclaw/workspace/skills/arxiv-paper-searcher/papers.json
 ```
 
 ### 参数说明
@@ -265,7 +265,7 @@ abs:"multimodal reasoning" AND cat:cs.CL
 
 用户检索配置保存在：
 
-`~/.openclaw/skills/arxiv-paper-searcher/config.json`
+`~/.openclaw/workspace/skills/arxiv-paper-searcher/config.json`
 
 示例：
 
@@ -299,7 +299,7 @@ abs:"multimodal reasoning" AND cat:cs.CL
     "kind": "agentTurn",
     "message": "使用已保存的 arXiv 检索配置执行一次完整流程：1. 搜索最新论文；2. 读取结果；3. 逐篇分析标题与摘要；4. 统计热点研究方向 Top 10；5. 输出 3 到 5 条趋势判断；6. 发送完整分析报告到当前会话。"
   },
-  "sessionTarget": "isolated"
+  "sessionTarget": "current"
 }
 ```
 
