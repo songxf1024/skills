@@ -14,41 +14,26 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 ## 适用场景
 
 当用户有以下需求时触发本技能：
-
 * 搜索某一主题的 arXiv 论文
-
 * 查看某方向的最新论文
-
 * 对检索结果做热点归纳、创新性评估和趋势总结
-
 * 基于固定关键词持续跟踪新论文
 
 **触发示例**
-
 * 帮我搜索 arXiv 上关于 GNN 的最新论文，要 20 篇
-
 * 查一下 transformer 相关的论文
-
 * 搜索图神经网络的论文，10 篇
-
 * 看看最近多模态大模型有什么新论文
-
 * 帮我持续监控 diffusion model 的 arXiv 论文
 
 ## 默认行为
 
 除非用户明确指定，否则使用以下默认值：
-
 * 检索数量为 `20`
-
 * 排序方式为 `date`
-
 * 分析范围为**标题 + 摘要**
-
 * 输出语言跟随用户
-
 * 时区默认使用 `Asia/Shanghai`
-
 * 定时监控默认使用 `sessionTarget: "current"`
 
 如果用户只说“查一下某个方向的论文”，应直接执行，不要为了数量或排序方式反复追问。
@@ -62,31 +47,20 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 #### 执行流程
 
 1. 解析用户的搜索意图，提取关键词、数量和排序方式
-
 2. 若用户未指定数量或排序，使用默认值
-
 3. 调用搜索脚本获取论文结果
-
 4. 逐篇阅读标题与摘要，完成分析
-
 5. 统计热点研究方向
-
 6. 归纳当前结果中的潜在趋势
-
 7. 输出完整报告
-
 8. 在报告结束后，主动询问用户是否需要开启定时监控
 
 #### 单次执行必须完成的内容
 
 * 返回论文列表
-
 * 对每篇论文给出关注热点
-
 * 对每篇论文给出创新性评估
-
 * 汇总热点研究方向 Top 10
-
 * 给出 3 到 5 条趋势判断
 
 #### 单次执行后建议追问
@@ -106,11 +80,8 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 优先复用刚才单次执行时的参数：
 
 * 搜索关键词
-
 * 论文数量
-
 * 排序方式
-
 * 时区
 
 若用户明确要求修改，再更新配置。
@@ -123,11 +94,8 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 > 你可以直接告诉我一个时间，例如
 >
 > * 每天早上 9 点
->
 > * 每周一上午 9 点
->
 > * 每周三晚上 8 点
->
 > * 其他你希望的具体时间
 
 **Step 3：先保存业务配置**
@@ -135,11 +103,8 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 在创建定时任务前，把查询参数保存到技能自己的 `config.json`：
 
 * `keyword`
-
 * `max_results`
-
 * `sort`
-
 * `timezone`
 
 这里的 `config.json` **只保存业务配置与绑定信息**，不充当调度真相源。
@@ -149,11 +114,8 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 创建规则：
 
 * 优先使用 OpenClaw cron 工具或 `openclaw cron add/edit/remove`
-
 * 默认 `sessionTarget: "current"`
-
 * 除非用户明确要求隔离执行或发到新对话，否则不要默认使用 `isolated`
-
 * 不要直接编辑 `~/.openclaw/cron/jobs.json`
 
 **Step 5：回写 job 绑定信息**
@@ -161,17 +123,11 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 创建成功后，把返回的 `jobId` 写回技能配置：
 
 * `job.job_id`
-
 * `job.name`
-
 * `job.enabled`
-
 * `job.session_target`
-
 * `job.schedule.kind`
-
 * `job.schedule.expr`
-
 * `job.schedule.tz`
 
 **Step 6：告知用户任务已创建成功并提醒会话绑定**
@@ -179,37 +135,26 @@ description: 搜索并分析 arXiv 学术论文。默认执行“搜索 + 摘要
 用户能得到两层确认：
 
 * OpenClaw cron 侧已经创建成功
-
 * 技能本地配置已绑定到对应 `job_id`
 
 同时必须补充提醒：
 
 * 默认结果会发回创建任务时所在的当前会话
-
 * 因此不要随意删除当前会话
-
 * 如果发送时当前会话已经不存在，可以回退到新对话继续发送
-
 * 一旦回退到新对话，原会话上下文连续性会中断
 
 #### 后续管理
 
 用户后续可以直接说：
-
 * 取消定时任务
-
 * 把搜索词改成 XXX
-
 * 数量改成 50 篇
-
 * 改成每周一早上 8 点推送
 
 处理原则：
-
 1. 先修改 OpenClaw cron 中真实存在的 job
-
 2. 再同步更新本地 `config.json` 里的 `job` 快照
-
 3. 如果本地存在旧 `schedule` 但没有 `job_id`，应视为“仅有旧配置，不代表存在真实定时任务”
 
 ## 关键执行原则
@@ -251,13 +196,9 @@ OpenClaw cron 才是定时任务的调度真相源。
 ### 8. 必须显式提醒当前会话绑定
 
 只要成功创建了 `sessionTarget: "current"` 的监控任务，就必须提醒用户：
-
 * 默认发送目标是当前会话
-
 * 不要删除当前会话
-
 * 若发送时当前会话已不存在，可回退到新对话继续发送
-
 * 回退后视为新的上下文起点，不再默认继承被删除会话中的连续对话上下文
 
 ## 分析规范
@@ -267,17 +208,11 @@ OpenClaw cron 才是定时任务的调度真相源。
 ### 1. 关注热点
 
 从摘要中提取论文主要关注的问题、方法或应用方向，例如：
-
 * 注意力机制
-
 * 图卷积
-
 * 时空预测
-
 * 多模态对齐
-
 * 推理增强
-
 * 数据高效训练
 
 ### 2. 创新性评估
@@ -307,15 +242,11 @@ OpenClaw cron 才是定时任务的调度真相源。
 ### 每篇论文必须包含
 
 * 原始论文标题，不翻译、不省略
-
 * 作者
-
 * 发布时间
-
 * 关注热点
-
+* 摘要概括
 * 创新性评估
-
 * arXiv 链接或 PDF 链接
 
 ### 推荐输出格式
@@ -327,6 +258,7 @@ OpenClaw cron 才是定时任务的调度真相源。
 - **作者**：Author A, Author B
 - **时间**：2026-03-17
 - **关注热点**：xxx、xxx、xxx
+- **摘要概括**：一段话总结论文核心内容
 - **创新性**：高
 - **链接**：arXiv / PDF
 
@@ -334,6 +266,7 @@ OpenClaw cron 才是定时任务的调度真相源。
 - **作者**：...
 - **时间**：...
 - **关注热点**：...
+- **摘要概括**：...
 - **创新性**：中
 - **链接**：...
 
@@ -377,7 +310,7 @@ python ~/.openclaw/workspace/skills/arxiv-paper-searcher/scripts/arxiv_search.py
 
 `~/.openclaw/workspace/skills/arxiv-paper-searcher/config.json`
 
-v1.1 的推荐结构：
+推荐结构：
 
 ```json
 {
@@ -406,8 +339,9 @@ v1.1 的推荐结构：
 
 ## OpenClaw cron 任务示例
 
-创建每日论文监控时，推荐任务形态如下：
+### 内部渠道（本地客户端）
 
+创建每日论文监控时，推荐任务形态如下：
 ```json
 {
   "name": "arXiv Monitor · GNN",
@@ -419,17 +353,94 @@ v1.1 的推荐结构：
   "sessionTarget": "current",
   "payload": {
     "kind": "agentTurn",
-    "message": "请使用当前技能的已保存配置执行一次完整 arXiv 监控流程。检索关键词是 ti:gnn OR ti:\"graph neural network\"。返回数量是 20。排序方式是 date。时区按 Asia/Shanghai 处理。请先搜索最新论文，再基于标题和摘要逐篇分析，最后输出完整结构化报告。报告必须包含论文列表、每篇论文的关注热点、创新性评估、热点研究方向 Top 10，以及 3 到 5 条趋势判断。"
+    "message": "直接输出以下提醒内容，禁止调用message工具：请使用当前 arxiv-paper-searcher 技能执行 GNN 论文监控流程。检索关键词是 ti:gnn OR ti:\"graph neural network\"。返回数量是 20。排序方式是 date。时区按 Asia/Shanghai 处理。请先搜索最新论文，再基于标题和摘要逐篇分析，最后输出完整结构化报告。报告必须包含论文列表、每篇论文的关注热点、创新性评估、热点研究方向 Top 10，以及 3 到 5 条趋势判断。"
   }
 }
 ```
 
 说明：
-
 * `sessionTarget: "current"` 适合把结果发回创建任务的当前会话
-
 * 该模式下优先依赖会话绑定，不默认走 `isolated + announce`
+* 不要直接改 `jobs.json`
 
+### 外部渠道（微信、企微、飞书等）
+
+当用户从微信、企微、飞书等外部渠道创建定时监控任务时，需要额外配置 delivery 投递参数。
+
+#### 判断当前渠道
+
+从对话上下文判断：
+* 有 `Conversation info` 且 `channel` 为 `openclaw-weixin`/`wechat-access`/`feishu`/`dingtalk` 等 → 外部渠道
+* 无 Conversation info 或 sender 为 `openclaw-control-ui` → 内部本地渠道
+
+#### 外部渠道的正确配置
+
+**QClaw 桌面版（无全局 CLI）**：
+
+使用 CLI 脚本创建（必须指定 delivery 参数）：
+
+```bash
+# Windows
+<qclaw-openclaw_skill_dir>\scripts\openclaw-win.cmd cron add \
+  --name "arXiv Monitor · {主题}" \
+  --cron {定时的时间} \
+  --tz "Asia/Shanghai" \
+  --session isolated \
+  --message "直接输出以下提醒内容，禁止调用message工具：请使用 arxiv-paper-searcher 技能执行 {主题} 论文监控流程。检索关键词是 \"{关键词}\"。返回数量是 {数量}。排序方式是 {排序}。时区按 {时区} 处理。请先搜索最新论文，再基于标题和摘要逐篇分析，最后输出完整结构化报告。报告必须包含论文列表、每篇论文的关注热点、创新性评估、热点研究方向 Top 10，以及 3 到 5 条趋势判断。" \
+  --announce \
+  --channel openclaw-weixin \
+  --to "<用户微信ID@im.wechat>" \
+  --account "<机器人账号ID>"
+```
+
+**标准 OpenClaw 部署（有全局 CLI）**：
+
+如果是标准部署，可直接使用全局命令：
+
+```bash
+# macOS / Linux / Windows（有全局 CLI）
+openclaw cron add \
+  --name "arXiv Monitor · {主题}" \
+  --cron {定时的时间} \
+  --tz "Asia/Shanghai" \
+  --session isolated \
+  --message "直接输出以下提醒内容，禁止调用message工具：请使用 arxiv-paper-searcher 技能执行 {主题} 论文监控流程。检索关键词是 \"{关键词}\"。返回数量是 {数量}。排序方式是 {排序}。时区按 {时区} 处理。请先搜索最新论文，再基于标题和摘要逐篇分析，最后输出完整结构化报告。报告必须包含论文列表、每篇论文的关注热点、创新性评估、热点研究方向 Top 10，以及 3 到 5 条趋势判断。" \
+  --announce \
+  --channel openclaw-weixin \
+  --to "<用户微信ID@im.wechat>" \
+  --account "<机器人账号ID>"
+```
+
+> **关键差异**：标准部署无需通过 `<qclaw-openclaw_skill_dir>/scripts/` 包装脚本，直接调用全局 `openclaw` 命令。
+
+**关键参数说明**：
+
+| 参数 | 作用 | 来源 |
+|------|------|------|
+| `--session isolated` | 隔离会话执行，不依赖原会话是否存活 | 固定值 |
+| `--announce` | 启用消息投递模式 | 固定值 |
+| `--channel` | 投递渠道 | 从 Conversation info 的 `channel` 字段获取 |
+| `--to` | 目标用户/群聊 ID | 从 Conversation info 的 `chat_id` 字段获取 |
+| `--account` | 发送账号 ID | 从 Conversation info 的 `account_id` 字段获取 |
+
+#### payload.message 格式要求
+
+外部渠道的 message **必须**包含禁止调用工具的提醒：
+
+```
+直接输出以下提醒内容，禁止调用message工具：请使用 arxiv-paper-searcher 技能执行 {主题} 论文监控流程。检索关键词是 "{关键词}"。返回数量是 {数量}。排序方式是 {排序}。时区按 {时区} 处理。请先搜索最新论文，再基于标题和摘要逐篇分析，最后输出完整结构化报告。报告必须包含论文列表、每篇论文的关注热点、创新性评估、热点研究方向 Top 10，以及 3 到 5 条趋势判断。
+```
+
+#### 为什么外部渠道用 `isolated + announce` 而不是 `current`？
+
+| 模式 | 优点 | 缺点 |
+|------|------|------|
+| `current` | 会话上下文连续 | 原会话被删除/过期时任务失败 |
+| `isolated + announce` | 不依赖原会话，投递可靠 | 每次是新会话，无历史上下文 |
+
+对于长期运行的定时任务（如每日论文推送），**推荐 `isolated + announce`**，因为：
+* 用户可能删除聊天记录或会话过期
+* delivery 配置确保消息一定能送达
 * 不要直接改 `jobs.json`
 
 ## 推荐工具脚本
@@ -505,18 +516,11 @@ pip install arxiv
 ```
 
 ## 不要做的事
-
 * 不要只返回论文列表，不做分析
-
 * 不要在用户未同意时自动创建定时任务
-
 * 不要把论文标题翻译成中文
-
 * 不要仅凭标题判断热点和创新性
-
 * 不要把当前批次结果的趋势判断表述成整个领域的定论
-
 * 不要把本地 `config.json` 当成真正的调度器
-
 * 不要直接编辑 `~/.openclaw/cron/jobs.json`
 
