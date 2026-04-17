@@ -1,0 +1,17 @@
+{
+  "portal_url": "https://yjsjw-443.webvpn.scut.edu.cn/",
+  "target_url": null,
+  "homepage_referer": null,
+  "success_text": "研究生教学教务管理系统",
+  "watch_xpath": "//*[@id=\"SC_DGRD_PP_APY_SC_ZP_DESCR$0\"]",
+  "request_timeout_seconds": 30,
+  "monitor_interval_seconds": 300,
+  "cookie_file": "cookies.json",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+  "notify": {
+    "notify_url": "http://14.103.144.178:7790/send/friend",
+    "notify_target": "1061700625",
+    "notify_key": "REPLACE_ME",
+    "serverchan_sendkey": ""
+  }
+}
