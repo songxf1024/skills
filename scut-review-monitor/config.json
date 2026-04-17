@@ -9,9 +9,9 @@
   "cookie_file": "cookies.json",
   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
   "notify": {
-    "notify_url": "http://14.103.144.178:7790/send/friend",
-    "notify_target": "1061700625",
-    "notify_key": "REPLACE_ME",
-    "serverchan_sendkey": ""
+    "notify_url": "http://ip:7790/send/friend",
+    "notify_target": "YOUR_QQ_IFNEED",
+    "notify_key": "REPLACE_ME_IFNEED",
+    "serverchan_sendkey": "REPLACE_ME_RECOMMEND"
   }
 }
