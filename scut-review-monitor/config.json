@@ -9,7 +9,7 @@
   "cookie_file": "cookies.json",
   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
   "notify": {
-    "notify_url": "http://<ip>:7790/send/friend",
+    "notify_url": "http://ip:7790/send/friend",
     "notify_target": "YOUR_QQ_IFNEED",
     "notify_key": "REPLACE_ME_IFNEED",
     "serverchan_sendkey": "REPLACE_ME_RECOMMEND"
@@ -24,9 +24,5 @@
     "request_timeout_seconds": 30,
     "url_file": "login_qrcode_url.txt",
     "response_file": "login_qrcode_upload.json"
-  },
-  "skill_output": {
-    "events_enabled": true,
-    "verbose_logs": false
   }
 }
