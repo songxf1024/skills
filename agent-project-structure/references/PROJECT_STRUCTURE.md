@@ -101,7 +101,7 @@ agent-project/
 
 ## .gitignore 模板
 
-使用 `assets/.gitignore` 模板，排除以下内容：
+使用 `references/GITIGNORE.md` 模板，排除以下内容：
 
 - 日志文件：`log/`、`*.log`
 - 临时文件：`temp/`、`*.tmp`、`*.cache`

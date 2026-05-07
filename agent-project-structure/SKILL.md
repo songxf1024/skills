@@ -56,3 +56,4 @@ agent-project/
 
 - [QUICK_START.md](QUICK_START.md) - 快速开始指南
 - [references/PROJECT_STRUCTURE.md](references/PROJECT_STRUCTURE.md) - 详细规范说明
+- [references/GITIGNORE.md](references/GITIGNORE.md) - .gitignore 模板

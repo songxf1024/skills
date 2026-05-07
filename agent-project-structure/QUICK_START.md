@@ -51,3 +51,4 @@ agent-project/
 
 - [SKILL.md](SKILL.md) - Skill 主文件
 - [references/PROJECT_STRUCTURE.md](references/PROJECT_STRUCTURE.md) - 详细规范说明
+- [references/GITIGNORE.md](references/GITIGNORE.md) - .gitignore 模板
