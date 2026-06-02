@@ -20,7 +20,7 @@ Use this skill whenever the user wants to generate images or videos with Agnes A
 | User Intent                                      | Model                   | Endpoint                      |
 | ------------------------------------------------ | ----------------------- | ----------------------------- |
 | Generate images, pictures, photos, illustrations | `agnes-image-2.0-flash` | `POST /v1/images/generations` |
-| Generate videos, clips, animations               | `agnes-video-2.0`       | `POST /v1/video/generations`  |
+| Generate videos, clips, animations               | `agnes-video-v2.0`       | `POST /v1/video/generations`  |
 
 ## API Key Setup
 
