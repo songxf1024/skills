@@ -117,12 +117,12 @@ def generate_image(prompt, size, output_path):
 
 
 def generate_video(prompt, duration, output_path):
-    """Generate a video using agnes-video-2.0 with polling."""
+    """Generate a video using agnes-video-v2.0 with polling."""
     print(f"Generating video ({duration}s): {prompt[:80]}...")
 
     # Create generation task
     resp = api_request("POST", "/video/generations", {
-        "model": "agnes-video-2.0",
+        "model": "agnes-video-v2.0",
         "prompt": prompt,
         "duration": duration,
     })
