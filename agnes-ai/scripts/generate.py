@@ -2,20 +2,30 @@
 """Agnes AI - Image and Video Generation CLI.
 
 Usage:
-  python generate.py image --prompt "..." [--size 1024x1024] --output path.png
+  python generate.py image --prompt "..." [--size 1024x1024] [--image URL1 [URL2 ...]] [--model MODEL] --output path.png
   python generate.py video --prompt "..." [--duration 5] --output path.mp4
+
+Image models:
+  agnes-image-2.1-flash  (text-to-image, high info density, DEFAULT for image)
+  agnes-image-2.0-flash  (image-to-image, multi-image composition, use --image flag)
 """
 
 import argparse
 import base64
 import json
+import mimetypes
 import os
 import sys
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 
 API_BASE = "https://apihub.agnes-ai.com/v1"
+
+DEFAULT_IMAGE_MODEL = "agnes-image-2.1-flash"
+I2I_IMAGE_MODEL = "agnes-image-2.0-flash"
+VIDEO_MODEL = "agnes-video-v2.0"
 
 
 def get_api_key():
@@ -50,10 +60,12 @@ def get_api_key():
     sys.exit(1)
 
 
-def api_request(method, endpoint, body=None):
+def api_request(method, endpoint, body=None, api_key=None):
     """Make an authenticated request to the Agnes AI API."""
+    if api_key is None:
+        api_key = get_api_key()
+
     url = API_BASE + endpoint
-    api_key = get_api_key()
 
     headers = {
         "Authorization": "Bearer " + api_key,
@@ -82,19 +94,71 @@ def download_file(url, output_path):
     print("Saved: " + output_path)
 
 
-def generate_image(prompt, size, output_path):
-    """Generate an image using agnes-image-2.0-flash."""
+def upload_image_as_data_url(image_path):
+    """Read a local image file and return a data URL (base64-encoded)."""
+    mime, _ = mimetypes.guess_type(image_path)
+    if mime is None:
+        # Default to png
+        mime = "image/png"
+    with open(image_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode("ascii")
+    return "data:" + mime + ";base64," + data
+
+
+def resolve_image_to_url(image_arg, api_key):
+    """Resolve an image argument to a URL string.
+
+    - If it already starts with http(s):, treat as URL and return as-is.
+    - If it is a local file path, upload as data URL.
+    """
+    if image_arg.startswith("http://") or image_arg.startswith("https://"):
+        return image_arg
+    # Local file: read and encode as data URL
+    if not os.path.exists(image_arg):
+        print("ERROR: Image file not found: " + image_arg, file=sys.stderr)
+        sys.exit(1)
+    return upload_image_as_data_url(image_arg)
+
+
+def generate_image(prompt, size, output_path, image_urls=None, model=None):
+    """Generate an image using Agnes AI image models.
+
+    If image_urls is provided (non-empty), use image-to-image model (agnes-image-2.0-flash).
+    Otherwise use text-to-image model (agnes-image-2.1-flash by default).
+    """
+    # Determine model
+    if image_urls and len(image_urls) > 0:
+        selected_model = model if model else I2I_IMAGE_MODEL
+        print("Using model (image-to-image): " + selected_model)
+    else:
+        selected_model = model if model else DEFAULT_IMAGE_MODEL
+        print("Using model (text-to-image): " + selected_model)
+
     print("Generating image: " + prompt[:80] + "...")
-    resp = api_request("POST", "/images/generations", {
-        "model": "agnes-image-2.0-flash",
+
+    # Build request body
+    body = {
+        "model": selected_model,
         "prompt": prompt,
         "n": 1,
         "size": size,
-    })
+    }
+
+    # Image-to-image or multi-image: add extra_body with image URLs
+    if image_urls and len(image_urls) > 0:
+        resolved_urls = [resolve_image_to_url(u, get_api_key()) for u in image_urls]
+        body["tags"] = ["img2img"]
+        body["extra_body"] = {
+            "image": resolved_urls,
+            "response_format": "url",
+        }
+
+    resp = api_request("POST", "/images/generations", body)
 
     data = resp.get("data", [])
     if not data:
         print("ERROR: No image data in response", file=sys.stderr)
+        print("Full response: " + json.dumps(resp, indent=2), file=sys.stderr)
         sys.exit(1)
 
     item = data[0]
@@ -122,7 +186,7 @@ def generate_video(prompt, duration, output_path):
 
     # Create generation task
     resp = api_request("POST", "/video/generations", {
-        "model": "agnes-video-v2.0",
+        "model": VIDEO_MODEL,
         "prompt": prompt,
         "duration": duration,
     })
@@ -143,11 +207,10 @@ def generate_video(prompt, duration, output_path):
         # API wraps response in {"code":"success","data":{...}}
         data = status_resp.get("data", status_resp)
         status = data.get("status", "unknown")
-        # Normalize status values: API may return NOT_START/IN_PROGRESS/SUCCESS/FAILED
-        # or queued/in_progress/completed/failed
-        status_lower = status.lower() if isinstance(status, str) else str(status).lower()
         progress = data.get("progress", "")
-        print("  [" + str(attempt + 1) + "] Status: " + status + " (" + str(progress) + ")")
+        print("  [" + str(attempt + 1) + "] Status: " + str(status) + " (" + str(progress) + ")")
+
+        status_lower = status.lower() if isinstance(status, str) else str(status).lower()
 
         if status_lower in ("completed", "success"):
             # Video URL can be in result_url, data.remixed_from_video_id, or data.url
@@ -180,6 +243,11 @@ def main():
     img = sub.add_parser("image", help="Generate an image")
     img.add_argument("--prompt", required=True, help="Image description")
     img.add_argument("--size", default="1024x1024", help="Image size (default: 1024x1024)")
+    img.add_argument("--image", nargs="+", default=None,
+                     help="Input image URL(s) or local file path(s) for image-to-image / multi-image")
+    img.add_argument("--model", default=None,
+                     help="Model name (default: agnes-image-2.1-flash for text-to-image, "
+                          "agnes-image-2.0-flash for image-to-image)")
     img.add_argument("--output", required=True, help="Output file path")
 
     # Video subcommand
@@ -191,7 +259,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "image":
-        generate_image(args.prompt, args.size, args.output)
+        generate_image(args.prompt, args.size, args.output, args.image, args.model)
     elif args.command == "video":
         generate_video(args.prompt, args.duration, args.output)
 

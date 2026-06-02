@@ -1,5 +1,5 @@
 name: agnes-ai
-description: Wraps the Agnes AI API for image and video generation. Use when the user asks to generate images, pictures, photos, or videos with Agnes AI. Two models: agnes-image-2.0-flash for images, agnes-video-v2.0 for video. OpenAI-compatible protocol. Requires an API key provided on first use.
+description: Wraps the Agnes AI API for image and video generation. Use when the user asks to generate images, pictures, photos, or videos with Agnes AI. Two image models: agnes-image-2.0-flash (image-to-image, multi-image) and agnes-image-2.1-flash (high-density text-to-image). OpenAI-compatible protocol. Requires an API key provided on first use.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Agnes AI — Image & Video Generation
@@ -10,17 +10,21 @@ Agnes AI provides image and video generation models accessible through an OpenAI
 Use this skill whenever the user wants to generate images or videos with Agnes AI.
 
 * **API Base URL**: `https://apihub.agnes-ai.com/v1`
-
 * **Auth**: Bearer token (`AGNES_API_KEY`)
-
 * **Protocol**: OpenAI-compatible request/response format
 
 ## Model Selection
 
-| User Intent                                      | Model                   | Endpoint                      |
-| ------------------------------------------------ | ----------------------- | ----------------------------- |
-| Generate images, pictures, photos, illustrations | `agnes-image-2.0-flash` | `POST /v1/images/generations` |
-| Generate videos, clips, animations               | `agnes-video-v2.0`       | `POST /v1/video/generations`  |
+| User Intent                                                      | Model                     | Endpoint                        |
+| ---------------------------------------------------------------- | ------------------------- | ------------------------------- |
+| Generate images from text (high info density preferred)            | `agnes-image-2.1-flash`  | `POST /v1/images/generations`  |
+| Edit/existing image, image-to-image, multi-image composition      | `agnes-image-2.0-flash`  | `POST /v1/images/generations`  |
+| Generate videos, clips, animations                               | `agnes-video-v2.0`      | `POST /v1/video/generations`   |
+
+**Model choice guidance:**
+- Default to `agnes-image-2.1-flash` for text-to-image (better high-information-density output)
+- Use `agnes-image-2.0-flash` when the user provides an input image for editing, style transfer, or multi-image composition
+- If unsure, ask the user which model they prefer, or default to `agnes-image-2.1-flash` for text-to-image
 
 ## API Key Setup
 
@@ -33,7 +37,6 @@ the user asks you to generate something with Agnes (not during skill installatio
 When the skill is triggered (user asks to generate an image/video), check these locations in order:
 
 1. Environment variable `AGNES_API_KEY`
-
 2. File `~/.agnes-ai/api_key`
 
 ### If No Key Found
@@ -64,14 +67,35 @@ Never echo or log the API key value in any user-visible output.
 
 Trigger: user asks to generate / create / make an image, picture, photo, illustration, poster, or visual with Agnes.
 
+### Model Selection Logic
+
+1. If the user provides an input image (image-to-image, editing, style transfer) → use `agnes-image-2.0-flash`
+2. If the user wants multi-image composition → use `agnes-image-2.0-flash`
+3. Default (text-to-image) → use `agnes-image-2.1-flash`
+
 ### Call the API
 
 Use the bundled script (`scripts/generate.py` in the same directory as this SKILL.md) for reliable execution.
-The script requires Python 3 (standard library only, no dependencies):
+The script requires Python3 (standard library only, no dependencies):
 
 ```bash
+# Text-to-image (agnes-image-2.1-flash, default)
 python3 scripts/generate.py image \
   --prompt "<prompt>" \
+  --size "<size>" \
+  --output "<output_path>"
+
+# Image-to-image (agnes-image-2.0-flash)
+python3 scripts/generate.py image \
+  --prompt "<prompt>" \
+  --image "<input_image_url_or_path>" \
+  --size "<size>" \
+  --output "<output_path>"
+
+# Multi-image composition (agnes-image-2.0-flash)
+python3 scripts/generate.py image \
+  --prompt "<prompt>" \
+  --image "url1" "url2" \
   --size "<size>" \
   --output "<output_path>"
 ```
@@ -79,24 +103,57 @@ python3 scripts/generate.py image \
 Or call the API directly with curl:
 
 ```bash
+# Text-to-image (agnes-image-2.1-flash)
+curl -s -X POST "https://apihub.agnes-ai.com/v1/images/generations" \
+  -H "Authorization: Bearer $AGNES_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "agnes-image-2.1-flash",
+    "prompt": "<prompt>",
+    "size": "<size>"
+  }'
+
+# Image-to-image (agnes-image-2.0-flash)
 curl -s -X POST "https://apihub.agnes-ai.com/v1/images/generations" \
   -H "Authorization: Bearer $AGNES_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "agnes-image-2.0-flash",
+    "tags": ["img2img"],
     "prompt": "<prompt>",
-    "n": 1,
-    "size": "<size>"
+    "size": "<size>",
+    "extra_body": {
+      "image": ["<input_image_url>"],
+      "response_format": "url"
+    }
   }'
 ```
 
 ### Parameters
 
-| Parameter | Description                                                        | Default     |
-| --------- | ------------------------------------------------------------------ | ----------- |
-| `prompt`  | Text description of the desired image (required)                   | —           |
-| `size`    | Image dimensions. Supported: `1024x1024`, `1792x1024`, `1024x1792` | `1024x1024` |
-| `n`       | Number of images to generate                                       | `1`         |
+| Parameter         | Description                                                              | Default       |
+| ----------------- | ------------------------------------------------------------------------ | ------------- |
+| `prompt`          | Text description of the desired image (required)                         | —             |
+| `size`            | Image dimensions. Supported: `1024x1024`, `1792x1024`, `1024x1792`  | `1024x1024`  |
+| `n`               | Number of images to generate                                             | `1`           |
+| `extra_body.image`| Input image URL(s) for image-to-image or multi-image tasks              | —             |
+| `tags`            | Task type tag, e.g. `["img2img"]` for image-to-image                  | —             |
+
+### Recommended Prompt Structure
+
+```
+[Subject] + [Scene / Environment] + [Style] + [Lighting] + [Composition] + [Quality Requirements]
+```
+
+Example:
+```
+A luminous floating city above a misty canyon at sunrise, cinematic realism, wide-angle composition, rich architectural details, soft golden light, high visual density
+```
+
+For image-to-image, also describe what to change AND what to preserve:
+```
+Transform the scene into a rain-soaked cyberpunk night with neon reflections while preserving the original composition and main subject layout.
+```
 
 ### Response Handling
 
@@ -106,10 +163,12 @@ The API returns an OpenAI-compatible response:
 {
   "data": [
     {
-      "url": "https://...",
-      "b64_json": "..."
+      "url": "https://..."
     }
-  ]
+  ],
+  "usage": {
+    "generated_images": 1
+  }
 }
 ```
 
@@ -125,7 +184,7 @@ Trigger: user asks to generate / create / make a video, clip, animation, or moti
 
 ### Call the API
 
-Use the bundled script (`scripts/generate.py` in the same directory as this SKILL.md):
+Use the bundled script (`scripts/generate.py` in the same directory as this SKILL.md`):
 
 ```bash
 python3 scripts/generate.py video \
@@ -180,9 +239,7 @@ The bundled `scripts/generate.py` script handles polling automatically — prefe
 ## Supported Image Sizes
 
 * `1024x1024` — square (default)
-
 * `1792x1024` — landscape
-
 * `1024x1792` — portrait
 
 ## Error Handling
@@ -190,9 +247,7 @@ The bundled `scripts/generate.py` script handles polling automatically — prefe
 If the API returns a non-200 status:
 
 1. Check that the API key is valid and has not expired
-
 2. Verify the prompt is not empty and does not violate content policy
-
 3. If the error persists, tell the user the error message and suggest checking their Agnes AI dashboard
 
 ## After Generation
@@ -200,8 +255,5 @@ If the API returns a non-200 status:
 After successfully generating and saving an image or video file:
 
 1. Tell the user the file path and deliver/attach the file to them
-
 2. For images: show a preview or display the file if your platform supports inline rendering
-
 3. For videos: provide a way for the user to view or download the file
-
