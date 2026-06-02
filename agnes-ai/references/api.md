@@ -12,10 +12,10 @@ All requests require an `Authorization: Bearer <api_key>` header.
 
 ## Models
 
-| Model ID | Type | Description |
-|---|---|---|
+| Model ID                | Type  | Description                 |
+| ----------------------- | ----- | --------------------------- |
 | `agnes-image-2.0-flash` | Image | Fast image generation model |
-| `agnes-video-2.0` | Video | Video generation model |
+| `agnes-video-2.0`       | Video | Video generation model      |
 
 ## Endpoints
 
@@ -59,7 +59,7 @@ POST /v1/video/generations
 
 ```json
 {
-  "model": "agnes-video-2.0",
+  "model": "agnes-video-v2.0",
   "prompt": "A drone flying over a city skyline",
   "duration": 5
 }
@@ -108,3 +108,4 @@ GET /v1/video/generations/{task_id}
   "error": "Generation failed: content policy violation"
 }
 ```
+
