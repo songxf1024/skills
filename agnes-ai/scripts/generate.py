@@ -19,16 +19,34 @@ API_BASE = "https://apihub.agnes-ai.com/v1"
 
 
 def get_api_key():
-    """Retrieve API key from environment or config file."""
+    """Retrieve API key from environment or config file.
+
+    Checked in order:
+      1. Environment variable AGNES_API_KEY
+      2. File ~/.agnes-ai/api_key
+      3. File api_key in the same directory as this script
+    """
     key = os.environ.get("AGNES_API_KEY")
     if key:
         return key
-    key_file = os.path.expanduser("~/.workbuddy/skills/agnes-ai/.api_key")
+
+    # User-level config
+    key_file = os.path.expanduser("~/.agnes-ai/api_key")
     if os.path.exists(key_file):
         with open(key_file) as f:
             return f.read().strip()
+
+    # Script-adjacent config (self-contained installs)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    local_key = os.path.join(script_dir, "api_key")
+    if os.path.exists(local_key):
+        with open(local_key) as f:
+            return f.read().strip()
+
     print("ERROR: AGNES_API_KEY not set.", file=sys.stderr)
-    print("Set the environment variable or write it to ~/.workbuddy/skills/agnes-ai/.api_key", file=sys.stderr)
+    print("Set the environment variable or write it to one of:", file=sys.stderr)
+    print("  ~/.agnes-ai/api_key", file=sys.stderr)
+    print(f"  {local_key}", file=sys.stderr)
     sys.exit(1)
 
 

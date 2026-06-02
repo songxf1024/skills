@@ -1,7 +1,6 @@
 ---
 name: agnes-ai
 description: Wraps the Agnes AI API for image and video generation. Use when the user asks to generate images, pictures, photos, or videos with Agnes AI. Two models: agnes-image-2.0-flash for images, agnes-video-2.0 for video. OpenAI-compatible protocol. Requires an API key provided on first use.
-agent_created: true
 ---
 
 # Agnes AI — Image & Video Generation
@@ -24,19 +23,38 @@ Use this skill whenever the user wants to generate images or videos with Agnes A
 
 ## API Key Setup
 
-On first use the skill requires an API key. Check these locations in order:
+**IMPORTANT**: Before any image or video generation, you MUST check for the API key.
+Do NOT proceed to call the API without a valid key. This check happens the first time
+the user asks you to generate something with Agnes (not during skill installation).
+
+### Checking for the Key
+
+When the skill is triggered (user asks to generate an image/video), check these locations in order:
 
 1. Environment variable `AGNES_API_KEY`
-2. File `~/.workbuddy/skills/agnes-ai/.api_key`
+2. File `~/.agnes-ai/api_key`
 
-If neither is found, ask the user: **"请提供你的 Agnes AI API Key，我会安全存储它。"**
+### If No Key Found
 
-Save the key the user provides by writing it to `~/.workbuddy/skills/agnes-ai/.api_key` (plain text, no trailing newline).
+**Immediately stop** and ask the user:
+
+> 要使用 Agnes AI 生成功能，需要先配置 API Key。请提供你的 Agnes AI API Key，我会安全存储在本地。
+> （获取方式：登录 https://apihub.agnes-ai.com 后在控制台查看）
+
+Do NOT attempt to call the API without a key.
+
+### Saving the Key
+
+Save the key the user provides by writing it to `~/.agnes-ai/api_key` (plain text, no trailing newline).
 Then set the environment variable for the current session:
 
 ```bash
-export AGNES_API_KEY=$(cat ~/.workbuddy/skills/agnes-ai/.api_key)
+mkdir -p ~/.agnes-ai
+echo -n "sk-your-key-here" > ~/.agnes-ai/api_key
+export AGNES_API_KEY="sk-your-key-here"
 ```
+
+After saving, proceed with the generation request.
 
 Never echo or log the API key value in any user-visible output.
 
@@ -46,12 +64,11 @@ Trigger: user asks to generate / create / make an image, picture, photo, illustr
 
 ### Call the API
 
-Use the bundled script for reliable execution:
+Use the bundled script (`scripts/generate.py` in the same directory as this SKILL.md) for reliable execution.
+The script requires Python 3 (standard library only, no dependencies):
 
 ```bash
-/Users/songxf/.workbuddy/binaries/python/envs/default/bin/python \
-  /Users/songxf/.workbuddy/skills/agnes-ai/scripts/generate.py \
-  image \
+python3 scripts/generate.py image \
   --prompt "<prompt>" \
   --size "<size>" \
   --output "<output_path>"
@@ -97,7 +114,8 @@ The API returns an OpenAI-compatible response:
 The `url` field contains a temporary download link. Download the image with `curl` or `wget` and save locally.
 If `b64_json` is present, decode it with `base64 -d` to get the raw image bytes.
 
-After saving the image file, deliver it to the user with `deliver_attachments`.
+After saving the image file locally, deliver it to the user — display a preview if your platform supports it,
+or attach the file to your response. Tell the user where the file was saved.
 
 ## Video Generation
 
@@ -105,12 +123,10 @@ Trigger: user asks to generate / create / make a video, clip, animation, or moti
 
 ### Call the API
 
-Use the bundled script:
+Use the bundled script (`scripts/generate.py` in the same directory as this SKILL.md):
 
 ```bash
-/Users/songxf/.workbuddy/binaries/python/envs/default/bin/python \
-  /Users/songxf/.workbuddy/skills/agnes-ai/scripts/generate.py \
-  video \
+python3 scripts/generate.py video \
   --prompt "<prompt>" \
   --duration <seconds> \
   --output "<output_path>"
@@ -155,7 +171,7 @@ curl -s "https://apihub.agnes-ai.com/v1/video/generations/<task_id>" \
 ```
 
 When `status` becomes `completed`, the response contains a `url` or `output` field with the video download link.
-Download it and deliver to the user with `deliver_attachments`.
+Download it and deliver to the user.
 
 The bundled `scripts/generate.py` script handles polling automatically — prefer using it over raw curl.
 
@@ -177,6 +193,6 @@ If the API returns a non-200 status:
 
 After successfully generating and saving an image or video file:
 
-1. Use `deliver_attachments` to send the file to the user
-2. For images, optionally display a preview using `preview_url`
-3. For videos, use `open_result_view` or `preview_url` to let the user view it
+1. Tell the user the file path and deliver/attach the file to them
+2. For images: show a preview or display the file if your platform supports inline rendering
+3. For videos: provide a way for the user to view or download the file

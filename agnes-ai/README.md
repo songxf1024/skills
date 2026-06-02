@@ -1,6 +1,7 @@
 # agnes-ai
 
-WorkBuddy 技能 — 封装 Agnes AI 的图像与视频生成能力，OpenAI 兼容协议。
+AI Agent 技能 — 封装 Agnes AI 的图像与视频生成能力，OpenAI 兼容协议。
+适用于任何支持 Skill 机制的 AI Agent 平台（WorkBuddy、OpenClaw、Hermes 等）。
 
 ## 功能
 
@@ -9,27 +10,25 @@ WorkBuddy 技能 — 封装 Agnes AI 的图像与视频生成能力，OpenAI 兼
 
 ## 安装
 
-### 方式一：通过 zip 包安装
-
-将 `agnes-ai.zip` 解压到 WorkBuddy skills 目录：
-
-```bash
-unzip -o agnes-ai.zip -d ~/.workbuddy/skills/
-```
-
-### 方式二：手动放置
-
-确保以下文件结构存在于 `~/.workbuddy/skills/agnes-ai/`：
+将本目录放置到你的 AI Agent 的 skills 目录下（各平台路径不同）：
 
 ```
 agnes-ai/
-├── SKILL.md
-├── README.md
+├── SKILL.md              # 技能定义（触发条件、调用流程）
+├── README.md             # 本文件
 ├── scripts/
-│   └── generate.py
+│   └── generate.py       # 命令行工具（纯标准库，零依赖）
 └── references/
-    └── api.md
+    └── api.md            # API 端点参考文档
 ```
+
+### 各平台安装路径
+
+| 平台 | 技能目录 |
+|---|---|
+| WorkBuddy | `~/.workbuddy/skills/` |
+| OpenClaw / Hermes | 按其约定的 skills 目录 |
+| 通用 | 克隆到任意目录，确保 AI Agent 能访问 `scripts/generate.py` |
 
 ## 配置 API Key
 
@@ -44,14 +43,15 @@ export AGNES_API_KEY="你的API密钥"
 将 Key 写入本地文件：
 
 ```bash
-echo "你的API密钥" > ~/.workbuddy/skills/agnes-ai/.api_key
+mkdir -p ~/.agnes-ai
+echo "你的API密钥" > ~/.agnes-ai/api_key
 ```
 
-> 优先级：环境变量 > 配置文件
+> 优先级：环境变量 > `~/.agnes-ai/api_key` > `scripts/api_key`（脚本同级目录）
 
 ## 使用方式
 
-### 在 WorkBuddy 对话中使用
+### 在 AI Agent 对话中使用
 
 安装后直接在对话中下达指令，技能会自动触发：
 
@@ -89,15 +89,6 @@ python3 scripts/generate.py video \
 - Python 3.8+（纯标准库，零外部依赖）
 - 有效的 Agnes AI API Key
 
-## 文件说明
-
-| 文件 | 作用 |
-|---|---|
-| `SKILL.md` | WorkBuddy 技能定义，包含触发条件与调用流程 |
-| `scripts/generate.py` | 命令行工具，封装图片与视频生成的 HTTP 调用 |
-| `references/api.md` | Agnes AI API 端点、参数、响应格式参考 |
-| `README.md` | 本文件 |
-
 ## API 地址
 
 ```
@@ -106,6 +97,6 @@ https://apihub.agnes-ai.com/v1
 
 ## 安全
 
-- 本技能仅向 Agnes AI 官方 API 地址发起请求
+- 仅向 Agnes AI 官方 API 地址（`apihub.agnes-ai.com`）发起请求
 - API Key 仅存储于本地，不会上传至任何第三方
 - 零外部依赖，代码完全透明
