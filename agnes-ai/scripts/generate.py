@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Agnes AI — Image and Video Generation CLI.
+"""Agnes AI - Image and Video Generation CLI.
 
 Usage:
   python generate.py image --prompt "..." [--size 1024x1024] --output path.png
@@ -46,17 +46,17 @@ def get_api_key():
     print("ERROR: AGNES_API_KEY not set.", file=sys.stderr)
     print("Set the environment variable or write it to one of:", file=sys.stderr)
     print("  ~/.agnes-ai/api_key", file=sys.stderr)
-    print(f"  {local_key}", file=sys.stderr)
+    print("  " + local_key, file=sys.stderr)
     sys.exit(1)
 
 
 def api_request(method, endpoint, body=None):
     """Make an authenticated request to the Agnes AI API."""
-    url = f"{API_BASE}{endpoint}"
+    url = API_BASE + endpoint
     api_key = get_api_key()
 
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": "Bearer " + api_key,
         "Content-Type": "application/json",
     }
 
@@ -71,20 +71,20 @@ def api_request(method, endpoint, body=None):
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         err_body = e.read().decode()
-        print(f"API Error ({e.code}): {err_body}", file=sys.stderr)
+        print("API Error (" + str(e.code) + "): " + err_body, file=sys.stderr)
         sys.exit(1)
 
 
 def download_file(url, output_path):
     """Download a file from URL to local path."""
-    print(f"Downloading to {output_path} ...")
+    print("Downloading to " + output_path + " ...")
     urllib.request.urlretrieve(url, output_path)
-    print(f"Saved: {output_path}")
+    print("Saved: " + output_path)
 
 
 def generate_image(prompt, size, output_path):
     """Generate an image using agnes-image-2.0-flash."""
-    print(f"Generating image: {prompt[:80]}...")
+    print("Generating image: " + prompt[:80] + "...")
     resp = api_request("POST", "/images/generations", {
         "model": "agnes-image-2.0-flash",
         "prompt": prompt,
@@ -105,7 +105,7 @@ def generate_image(prompt, size, output_path):
         img_bytes = base64.b64decode(item["b64_json"])
         with open(output_path, "wb") as f:
             f.write(img_bytes)
-        print(f"Saved: {output_path}")
+        print("Saved: " + output_path)
         return output_path
 
     if item.get("url"):
@@ -118,7 +118,7 @@ def generate_image(prompt, size, output_path):
 
 def generate_video(prompt, duration, output_path):
     """Generate a video using agnes-video-v2.0 with polling."""
-    print(f"Generating video ({duration}s): {prompt[:80]}...")
+    print("Generating video (" + str(duration) + "s): " + prompt[:80] + "...")
 
     # Create generation task
     resp = api_request("POST", "/video/generations", {
@@ -132,28 +132,40 @@ def generate_video(prompt, duration, output_path):
         print("ERROR: No task ID in response", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Task ID: {task_id}")
+    print("Task ID: " + task_id)
 
     # Poll for completion
     max_attempts = 120  # ~10 minutes at 5s intervals
     for attempt in range(max_attempts):
         time.sleep(5)
-        status_resp = api_request("GET", f"/video/generations/{task_id}")
-        status = status_resp.get("status", "unknown")
-        print(f"  [{attempt + 1}] Status: {status}")
+        status_resp = api_request("GET", "/video/generations/" + task_id)
 
-        if status == "completed":
-            url = status_resp.get("url") or status_resp.get("output")
+        # API wraps response in {"code":"success","data":{...}}
+        data = status_resp.get("data", status_resp)
+        status = data.get("status", "unknown")
+        # Normalize status values: API may return NOT_START/IN_PROGRESS/SUCCESS/FAILED
+        # or queued/in_progress/completed/failed
+        status_lower = status.lower() if isinstance(status, str) else str(status).lower()
+        progress = data.get("progress", "")
+        print("  [" + str(attempt + 1) + "] Status: " + status + " (" + str(progress) + ")")
+
+        if status_lower in ("completed", "success"):
+            # Video URL can be in result_url, data.remixed_from_video_id, or data.url
+            url = data.get("result_url")
+            if not url:
+                inner_data = data.get("data", {})
+                url = inner_data.get("remixed_from_video_id") or inner_data.get("url")
             if url:
                 download_file(url, output_path)
                 return output_path
             else:
                 print("ERROR: Completed but no video URL", file=sys.stderr)
+                print("Full response: " + json.dumps(status_resp, indent=2), file=sys.stderr)
                 sys.exit(1)
 
-        if status == "failed":
-            err = status_resp.get("error", "Unknown error")
-            print(f"ERROR: Generation failed: {err}", file=sys.stderr)
+        if status_lower in ("failed", "error"):
+            err = data.get("fail_reason") or data.get("error", "Unknown error")
+            print("ERROR: Generation failed: " + str(err), file=sys.stderr)
             sys.exit(1)
 
     print("ERROR: Timed out waiting for video generation", file=sys.stderr)
