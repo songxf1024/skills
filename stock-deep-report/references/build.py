@@ -26,31 +26,27 @@ JSON 格式（嵌套结构，由 AI 采集后写入）：
   "holders": [{"rank":1,"name":"安凯技术","note":"控股股东","pct":"15.66%","pct_color":"blue","chg":"不变","chg_color":"muted"},...],
   "holders_note": "* 数据来源：2026年一季报",
   "risks": ["公司尚未盈利...",...],
+  "sources": [{"dim":"...","source":"...","note":"..."}],
+  "margin": {"trend":[{"date":"2026-07-01","balance":1234567890,"balance_chg":12345678}], "summary":"近5日融资余额增加1.2亿"},
+  "north_south": {"holdings":[{"date":"2026-07-01","holder":"香港中央结算","shares":12345678,"pct":2.5,"chg":123456}], "summary":"北向资金近5日净流入1.2亿"},
+  "analyst": {"ratings":[{"org":"中信证券","rating":"买入","target":25.0,"date":"2026-07-01"}], "distribution":{"买入":5,"增持":3,"中性":2}, "consensus_target":24.5, "summary":"5家券商评级..."},
+  "lock_up": {"upcoming":[{"date":"2026-08-15","shares":12345678,"pct":5.0,"type":"首发原股东限售"}], "summary":"未来3个月解禁..."},
+  "dividend": {"history":[{"year":2025,"dividend":0.5,"yield":1.2,"date":"2026-06-30"}], "summary":"近3年累计分红..."},
+  "repo": {"records":[{"date":"2026-07-01","shares":123456,"price":15.0,"amount":1851840}], "summary":"近30天回购..."},
+  "block_trade": {"records":[{"date":"2026-07-01","price":15.0,"shares":50000,"discount":-2.5,"buyer":"中信证券北京营业部"}], "summary":"近30天大宗交易..."},
+  "billboard": {"records":[{"date":"2026-07-01","reason":"涨幅偏离值达7%","buy_amt":12345678,"sell_amt":9876543,"net":2469135}], "summary":"近30天上榜..."},
+  "pledge": {"records":[{"holder":"安凯技术","shares":12345678,"pct":15.0,"warning_line":10.0,"status":"正常"}], "summary":"控股股东质押..."},
   "report_date": "2026-07-03"
 }
 """
 
 import json
 import sys
-import os
 import re
 
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-def color_class(val, is_pct=False):
-    """返回涨红跌绿的颜色"""
-    if val is None:
-        return ""
-    if is_pct:
-        return "up" if val >= 0 else "down"
-    else:
-        return "up" if val >= 0 else "down"
-
-def fmt_pct(val):
-    sign = "+" if val >= 0 else ""
-    return f"{sign}{val:.2f}%"
 
 def gen_hero(d):
     s = d["stock"]
@@ -247,10 +243,13 @@ def gen_sec04(d):
 
 def gen_sec05(d):
     tech = d.get("tech", {})
+    alpha = tech.get("alpha", [])
     html = """<div class="sec-div">SEC 05 &nbsp; 技术面（完整指标）</div>
 <div class="card">
   <h2><span class="icon">📈</span> 技术指标全景</h2>
-  <div class="ind-grid">"""
+  """
+    # 第一行：核心指标 RSI + MACD (2列)
+    html += '<div class="ind-row-2col">'
     # RSI
     rsi = tech.get("rsi", 50)
     rsi_c = "var(--red)" if rsi > 70 else ("var(--amber)" if rsi > 50 else "var(--green)")
@@ -258,6 +257,9 @@ def gen_sec05(d):
     # MACD
     macd_c = "var(--red)" if "金叉" in tech.get("macd","") else "var(--green)"
     html += f'<div class="ind-box"><div class="ind-name">MACD(12,26,9)</div><div class="ind-val" style="color:{macd_c}">{tech.get("macd","")}</div><div class="ind-sub">{tech.get("macd_note","")}</div></div>'
+    html += '</div>'
+    # 第二行：次要指标 2×2
+    html += '<div class="ind-row-2col" style="margin-top:14px">'
     # KDJ
     kdj = tech.get("kdj","K=50 D=50 J=50")
     kdj_c = "var(--amber)" if "高位" in tech.get("kdj_note","") or "超买" in tech.get("kdj_note","") else "var(--green)"
@@ -272,16 +274,28 @@ def gen_sec05(d):
     vol = tech.get("vol_ratio", 1)
     vol_c = "var(--red)" if vol > 1.5 else ("var(--amber)" if vol > 1 else "var(--muted)")
     html += f'<div class="ind-box"><div class="ind-name">量比</div><div class="ind-val" style="color:{vol_c}">{vol:.2f}x</div><div class="ind-sub">{tech.get("vol_note","")}</div></div>'
-    html += """
-  </div>"""
-    # Alpha section
-    alpha = tech.get("alpha", [])
+    html += '</div>'
+    # 第三行：近N日涨跌幅（含 Alpha） — 单卡片
     if alpha:
-        html += '<div style="margin-top:16px;padding:12px 16px;background:#f8fafc;border-radius:10px;font-size:13px;color:var(--ink);line-height:1.7">📐 <b>近N日涨跌幅（vs 科创板指数 Alpha）</b><br>'
+        html += '<div class="ind-box" style="margin-top:14px">'
+        html += '<div class="ind-name">📉 近N日涨跌幅（Alpha）</div>'
+        html += '<div style="margin-top:8px">'
         for a in alpha:
-            cls = "var(--red)" if a.get("alpha", 0) > 0 else "var(--green)"
-            html += f'&nbsp;&nbsp;{a["days"]}日：股价 {a["stock"]:.1f}% &nbsp;|&nbsp; 科创指 {a["index"]:.1f}% &nbsp;→&nbsp; <b style="color:{cls}">Alpha {a["alpha"]:+.1f}%</b><br>'
-        html += "</div>"
+            stock_ret = a.get("stock", 0)
+            idx_ret = a.get("index", 0)
+            alpha_ret = a.get("alpha", 0)
+            alpha_c = "var(--red)" if alpha_ret > 0 else "var(--green)"
+            html += (
+                f'<div style="display:flex;align-items:center;gap:6px;padding:6px 0;font-size:14px;line-height:1.7">'
+                f'<span style="color:var(--muted);min-width:40px">{a["days"]}日：</span>'
+                f'<span>股价 <b>{stock_ret:+.1f}%</b></span>'
+                f'<span style="color:var(--muted);margin:0 4px">|</span>'
+                f'<span>基准 <b>{idx_ret:+.1f}%</b></span>'
+                f'<span style="color:var(--muted);margin:0 6px">→</span>'
+                f'<span style="font-weight:800;color:{alpha_c}">Alpha {alpha_ret:+.1f}%</span>'
+                f'</div>'
+            )
+        html += '</div></div>'
     html += "</div>"
     return html
 
@@ -336,7 +350,7 @@ def gen_sec07(d):
     if ia.get("rows"):
         html += """
 <div class="card">
-  <h2><span class="icon">📡</span> 科创板指数对比（Alpha）</h2>
+  <h2><span class="icon">📡</span> 基准指数对比（Alpha）</h2>
   <div style="font-size:13.5px;line-height:2">"""
         for row in ia["rows"]:
             cls = "var(--red)" if row.get("val", 0) > 0 else "var(--green)"
@@ -351,19 +365,38 @@ def gen_sec08(d):
     peers = d.get("peers", {})
     headers = peers.get("headers", [])
     rows = peers.get("rows", [])
+    stock_name = d.get("stock", {}).get("name", "该股")
     html = """<div class="sec-div">SEC 08 &nbsp; 同行对比</div>
 <div class="card">
-  <h2><span class="icon">🏭</span> 半导体SoC同行估值与业绩对比</h2>
+  <h2><span class="icon">🏭</span> 同行估值与业绩对比</h2>
   <table>
     <thead><tr>"""
     for h in headers:
         html += f"<th>{h}</th>"
     html += "</tr></thead><tbody>"
+    # 命名字段 -> 表头 headers 的映射（当 rows 未提供 cells 数组时使用）
+    field_map = {
+        "公司": "name", "代码": "code",
+        "PE(TTM)": "pe", "PE": "pe",
+        "PB": "pb",
+        "PS(TTM)": "ps", "PS": "ps",
+        "营收(最近)": "revenue", "营收": "revenue",
+        "净利润(最近)": "profit", "净利润": "profit",
+        "毛利率": "gross_margin", "ROE": "roe",
+    }
     for row in rows:
         cls = "highlight" if row.get("highlight") else ""
         html += f'<tr class="{cls}">'
-        for cell in row.get("cells", []):
-            html += f"<td>{cell}</td>"
+        cells = row.get("cells")
+        if cells:
+            # 兼容旧格式：cells 数组
+            for cell in cells:
+                html += f"<td>{cell}</td>"
+        else:
+            # 新格式：根据 headers 从命名字段读取
+            for h in headers:
+                key = field_map.get(h, h.lower())
+                html += f'<td>{row.get(key, "--")}</td>'
         html += "</tr>"
     html += "</tbody></table>"
     if peers.get("note"):
@@ -416,6 +449,220 @@ def gen_sec11(d):
     ⚠️ 数据截止 """ + d.get("report_date","") + """ 盘中（实时行情有延迟）。财务数据以公司正式公告为准，本报告中数据如有偏差，以交易所/公司公告为准。
   </div>
 </div>"""
+    return html
+
+def gen_sec12(d):
+    """SEC 12 — 融资融券与北向资金"""
+    html = '<div class="sec-div">SEC 12 &nbsp; 融资融券与北向资金</div>'
+    # 融资融券
+    margin = d.get("margin", {})
+    html += '<div class="card" style="margin-bottom:18px">\n  <h2><span class="icon">💹</span> 融资融券明细</h2>'
+    trend = margin.get("trend", [])
+    if trend:
+        html += '<table><thead><tr><th>日期</th><th>融资余额(万)</th><th>较前日(万)</th><tr></thead><tbody>'
+        for i, row in enumerate(trend):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            chg_cls = "up" if row.get("balance_chg", 0) >= 0 else "down"
+            chg_sign = "+" if row.get("balance_chg", 0) >= 0 else ""
+            html += f'<tr style="background:{bg}"><td>{row.get("date","")}</td><td>{row.get("balance",0)/1e4:.1f}</td><td class="{chg_cls}">{chg_sign}{row.get("balance_chg",0)/1e4:.1f}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">暂无融资融券数据</div>'
+    if margin.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {margin["summary"]}</div>'
+    html += '</div>'
+
+    # 北向/南向资金
+    ns = d.get("north_south", {})
+    html += '<div class="card">\n  <h2><span class="icon">🌏</span> 北向/南向资金持仓</h2>'
+    holdings = ns.get("holdings", [])
+    if holdings:
+        html += '<table><thead><tr><th>日期</th><th>持股方</th><th>持股数(万股)</th><th>占流通比%</th><th>变动(万股)</th></tr></thead><tbody>'
+        for i, row in enumerate(holdings):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            chg_cls = "up" if row.get("chg", 0) >= 0 else "down"
+            chg_sign = "+" if row.get("chg", 0) >= 0 else ""
+            html += f'<tr style="background:{bg}"><td>{row.get("date","")}</td><td>{row.get("holder","")}</td><td>{row.get("shares",0)/1e4:.1f}</td><td>{row.get("pct",0):.2f}%</td><td class="{chg_cls}">{chg_sign}{row.get("chg",0)/1e4:.1f}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">暂无北向/南向资金数据</div>'
+    if ns.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {ns["summary"]}</div>'
+    html += '</div>'
+    return html
+
+def gen_sec13(d):
+    """SEC 13 — 分析师评级与一致预期"""
+    html = '<div class="sec-div">SEC 13 &nbsp; 分析师评级与一致预期</div><div class="card">'
+    html += '\n  <h2><span class="icon">📝</span> 分析师评级汇总</h2>'
+    analyst = d.get("analyst", {})
+    ratings = analyst.get("ratings", [])
+    dist = analyst.get("distribution", {})
+
+    # 评级分布条
+    if dist:
+        total_r = sum(dist.values()) or 1
+        html += '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+        colors = {"买入":"var(--red)","增持":"var(--amber)","中性":"var(--blue)","减持":"var(--green)","卖出":"var(--purple)"}
+        for k, v in dist.items():
+            c = colors.get(k, "var(--muted)")
+            pct = v / total_r * 100
+            html += f'<div style="flex:1;min-width:90px;text-align:center;padding:10px 8px;background:#f8fafc;border-radius:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">{k}</div><div style="font-size:22px;font-weight:800;color:{c}">{v}</div><div style="font-size:11px;color:var(--muted)">{pct:.0f}%</div></div>'
+        html += '</div>'
+
+    # 评级明细表
+    if ratings:
+        html += '<table><thead><tr><th>机构</th><th>评级</th><th>目标价(元)</th><th>日期</th></tr></thead><tbody>'
+        for i, r in enumerate(ratings):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            rc = "var(--red)" if r.get("rating","") in ["买入","强推"] else ("var(--green)" if r.get("rating","") in ["减持","卖出"] else "var(--amber)")
+            html += f'<tr style="background:{bg}"><td>{r.get("org","")}</td><td style="color:{rc};font-weight:700">{r.get("rating","")}</td><td>{r.get("target","--")}</td><td>{r.get("date","")}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">暂无分析师评级数据</div>'
+
+    if analyst.get("consensus_target"):
+        html += f'<div style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border-radius:10px;font-size:13px;color:#166534">🎯 一致目标价：<b>{analyst["consensus_target"]}</b> 元 &nbsp;|&nbsp; {analyst.get("summary","")}</div>'
+    html += '</div>'
+    return html
+
+def gen_sec14(d):
+    """SEC 14 — 解禁日历与分红回购"""
+    html = '<div class="sec-div">SEC 14 &nbsp; 解禁日历与分红回购</div>'
+
+    # 解禁日历
+    lock_up = d.get("lock_up", {})
+    html += '<div class="card" style="margin-bottom:18px">\n  <h2><span class="icon">📅</span> 限售股解禁日历</h2>'
+    upcoming = lock_up.get("upcoming", [])
+    if upcoming:
+        html += '<table><thead><tr><th>解禁日期</th><th>解禁股数(万股)</th><th>占总股本%</th><th>类型</th></tr></thead><tbody>'
+        for i, row in enumerate(upcoming):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            # 安全获取数据，处理类型错误
+            date_str = row.get("date", "--")
+            shares = row.get("shares", 0)
+            pct = row.get("pct", 0)
+            type_str = row.get("type", "--")
+            # 确保 shares 和 pct 是数字类型
+            try:
+                shares_val = float(shares) / 1e4
+            except (ValueError, TypeError):
+                shares_val = 0
+            try:
+                pct_val = float(pct)
+            except (ValueError, TypeError):
+                pct_val = 0
+            html += f'<tr style="background:{bg}"><td>{date_str}</td><td>{shares_val:.1f}</td><td>{pct_val:.2f}%</td><td>{type_str}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">未来3个月无大宗解禁计划</div>'
+    if lock_up.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {lock_up["summary"]}</div>'
+    html += '</div>'
+
+    # 分红历史
+    divd = d.get("dividend", {})
+    html += '<div class="card" style="margin-bottom:18px">\n  <h2><span class="icon">💰</span> 历史分红配送</h2>'
+    history = divd.get("history", [])
+    if history:
+        html += '<table><thead><tr><th>年度</th><th>分红(元/股)</th><th>股息率%</th><th>除权日期</th></tr></thead><tbody>'
+        for i, row in enumerate(history):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            html += f'<tr style="background:{bg}"><td>{row.get("year","--")}</td><td>{row.get("dividend","--")}</td><td>{row.get("yield","--")}</td><td>{row.get("date","--")}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">暂无分红历史数据</div>'
+    if divd.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {divd["summary"]}</div>'
+    html += '</div>'
+
+    # 回购进展
+    repo = d.get("repo", {})
+    html += '<div class="card">\n  <h2><span class="icon">🔄</span> 回购进展</h2>'
+    records = repo.get("records", [])
+    if records:
+        html += '<table><thead><tr><th>公告日期</th><th>回购股数(万股)</th><th>回购均价(元)</th><th>回购金额(万元)</th></tr></thead><tbody>'
+        for i, row in enumerate(records):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            # 安全获取数据
+            date_str = row.get("date", "--")
+            shares = row.get("shares", 0)
+            price = row.get("price", "--")
+            amount = row.get("amount", 0)
+            # 确保是数字类型
+            try:
+                shares_val = float(shares) / 1e4
+            except (ValueError, TypeError):
+                shares_val = 0
+            try:
+                amount_val = float(amount) / 1e4
+            except (ValueError, TypeError):
+                amount_val = 0
+            html += f'<tr style="background:{bg}"><td>{date_str}</td><td>{shares_val:.1f}</td><td>{price}</td><td>{amount_val:.1f}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">暂无回购记录</div>'
+    if repo.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {repo["summary"]}</div>'
+    html += '</div>'
+    return html
+
+def gen_sec15(d):
+    """SEC 15 — 大宗交易、龙虎榜、股权质押"""
+    html = '<div class="sec-div">SEC 15 &nbsp; 大宗交易、龙虎榜与股权质押</div>'
+
+    # 大宗交易
+    bt = d.get("block_trade", {})
+    html += '<div class="card" style="margin-bottom:18px">\n  <h2><span class="icon">🏷️</span> 大宗交易记录（近30天）</h2>'
+    records = bt.get("records", [])
+    if records:
+        html += '<table><thead><tr><th>日期</th><th>成交价(元)</th><th>成交量(万股)</th><th>折价率%</th><th>买方营业部</th></tr></thead><tbody>'
+        for i, row in enumerate(records):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            discount_cls = "down" if row.get("discount", 0) < 0 else "up"
+            html += f'<tr style="background:{bg}"><td>{row.get("date","")}</td><td>{row.get("price","--")}</td><td>{row.get("shares",0)/1e4:.1f}</td><td class="{discount_cls}">{row.get("discount","--")}%</td><td>{row.get("buyer","--")}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">近30天无大宗交易记录</div>'
+    if bt.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {bt["summary"]}</div>'
+    html += '</div>'
+
+    # 龙虎榜
+    bb = d.get("billboard", {})
+    html += '<div class="card" style="margin-bottom:18px">\n  <h2><span class="icon">🐯</span> 龙虎榜记录（近30天）</h2>'
+    bb_records = bb.get("records", [])
+    if bb_records:
+        html += '<table><thead><tr><th>日期</th><th>上榜原因</th><th>买入额(万)</th><th>卖出额(万)</th><th>净买入(万)</th></tr></thead><tbody>'
+        for i, row in enumerate(bb_records):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            net = row.get("net", 0)
+            net_cls = "up" if net >= 0 else "down"
+            net_sign = "+" if net >= 0 else ""
+            html += f'<tr style="background:{bg}"><td>{row.get("date","")}</td><td>{row.get("reason","")}</td><td>{row.get("buy_amt",0)/1e4:.1f}</td><td>{row.get("sell_amt",0)/1e4:.1f}</td><td class="{net_cls}">{net_sign}{net/1e4:.1f}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">近30天未上龙虎榜</div>'
+    if bb.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {bb["summary"]}</div>'
+    html += '</div>'
+
+    # 股权质押
+    pl = d.get("pledge", {})
+    html += '<div class="card">\n  <h2><span class="icon">🔗</span> 股权质押情况</h2>'
+    pl_records = pl.get("records", [])
+    if pl_records:
+        html += '<table><thead><tr><th>股东</th><th>质押股数(万股)</th><th>占持股比%</th><th>预警线</th><th>状态</th></tr></thead><tbody>'
+        for i, row in enumerate(pl_records):
+            bg = "#fafbfc" if i % 2 == 1 else "transparent"
+            status_color = "#16a34a" if row.get("status","") == "正常" else "#dc2626"
+            html += f'<tr style="background:{bg}"><td>{row.get("holder","")}</td><td>{row.get("shares",0)/1e4:.1f}</td><td>{row.get("pct",0):.2f}%</td><td>{row.get("warning_line","--")}</td><td style="color:{status_color};font-weight:700">{row.get("status","")}</td></tr>'
+        html += "</tbody></table>"
+    else:
+        html += '<div style="color:var(--muted);font-size:13px;padding:12px 0">无股权质押记录</div>'
+    if pl.get("summary"):
+        html += f'<div style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.7">📊 {pl["summary"]}</div>'
+    html += '</div>'
     return html
 
 CSS = """\
@@ -485,12 +732,13 @@ body{background:var(--bg);color:var(--ink);font:14.5px/1.7 -apple-system,BlinkMa
 .flow-bar-wrap{flex:1;height:14px;background:var(--line);border-radius:7px;overflow:hidden;display:flex}
 .flow-val{font-size:13px;font-weight:700;width:90px;text-align:right}
 
-/* 技术面 */
-.ind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px}
-.ind-box{background:#f8fafc;border-radius:10px;padding:14px 16px}
-.ind-name{font-size:11.5px;color:var(--muted);margin-bottom:4px}
-.ind-val{font-size:20px;font-weight:800}
-.ind-sub{font-size:12px;color:var(--muted);margin-top:2px}
+/* 技术面 — 统一 ind-box 风格，与 fin-item 一致 */
+.ind-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px}
+.ind-row-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.ind-box{background:#f8fafc;border-radius:10px;padding:16px 18px;box-sizing:border-box}
+.ind-name{font-size:11.5px;color:var(--muted);margin-bottom:4px;font-weight:600}
+.ind-val{font-size:17px;font-weight:800;line-height:1.35}
+.ind-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
 
 /* 同行对比 table */
 table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px}
@@ -537,7 +785,7 @@ tr:hover td{background:#f8fafc}
   .hero h1{font-size:22px}
   .hero-right .price{font-size:28px}
   .fin-grid{grid-template-columns:1fr}
-  .ind-grid{grid-template-columns:1fr 1fr}
+  .ind-row,.ind-row-2col{grid-template-columns:1fr}
   .hero-meta{gap:14px}
 }
 """
@@ -546,55 +794,47 @@ def main():
     if len(sys.argv) < 3:
         print("用法: python3 build.py <input_json> <output_html>")
         sys.exit(1)
-    
+
     data = load_json(sys.argv[1])
-    report_date = data.get("report_date", "2026-07-03")
-    
+    report_date = data.get("report_date", "")
+    name = data["stock"]["name"]
+    code = data["stock"]["code"]
+
+    # 章节渲染器按顺序调用
+    sections = [
+        gen_hero, gen_sec01, gen_sec01b, gen_sec02, gen_sec03, gen_sec04,
+        gen_sec05, gen_sec06, gen_sec07, gen_sec08, gen_sec09, gen_sec10, gen_sec11,
+        gen_sec12, gen_sec13, gen_sec14, gen_sec15,
+    ]
+    body = "\n".join(fn(data) for fn in sections)
+
     html = f"""<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{data["stock"]["name"]}({data["stock"]["code"]}) 个股三维深度分析报告</title>
+<title>{name}({code}) 个股三维深度分析报告</title>
 <style>
 {CSS}
 </style>
 </head>
 <body>
 <div class="wrap">
-"""
-    html += gen_hero(data) + "\n"
-    html += gen_sec01(data) + "\n"
-    html += gen_sec01b(data) + "\n"
-    html += gen_sec02(data) + "\n"
-    html += gen_sec03(data) + "\n"
-    html += gen_sec04(data) + "\n"
-    html += gen_sec05(data) + "\n"
-    html += gen_sec06(data) + "\n"
-    html += gen_sec07(data) + "\n"
-    html += gen_sec08(data) + "\n"
-    html += gen_sec09(data) + "\n"
-    html += gen_sec10(data) + "\n"
-    html += gen_sec11(data) + "\n"
-    html += f"""<div class="footer">
-  {data["stock"]["name"]}({data["stock"]["code"]}) 个股三维深度分析报告 &nbsp;|&nbsp; 数据截止：{report_date} &nbsp;|&nbsp; 由 WorkBuddy AI 生成 &nbsp;|&nbsp; 非投资建议
+{body}
+<div class="footer">
+  {name}({code}) 个股三维深度分析报告 &nbsp;|&nbsp; 数据截止：{report_date} &nbsp;|&nbsp; 由 WorkBuddy AI 生成 &nbsp;|&nbsp; 非投资建议
 </div>
-</div><!-- .wrap -->
+</div>
 </body>
 </html>"""
-    
-    # 简单的 HTML 格式化：在每个 </div> 后添加换行符
-    html = html.replace("</div>", "</div>\n")
-    # 在每个 </tr> 后添加换行符
-    html = html.replace("</tr>", "</tr>\n")
-    # 在每个 </td> 后添加换行符（如果后面不是 <）
-    import re
+
+    # 简单排版：在 </div>、</tr>、独立 </td> 后加换行，便于查看
+    html = html.replace("</div>", "</div>\n").replace("</tr>", "</tr>\n")
     html = re.sub(r'(</td>)(?!\s*<)', r'\1\n', html)
-    
-    out_path = sys.argv[2]
-    with open(out_path, "w", encoding="utf-8") as f:
+
+    with open(sys.argv[2], "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"已生成：{out_path}（{len(html)} 字符，约 {len(html.split(chr(10)))} 行）")
+    print(f"已生成：{sys.argv[2]}（{len(html)} 字符，约 {len(html.splitlines())} 行）")
 
 if __name__ == "__main__":
     main()
