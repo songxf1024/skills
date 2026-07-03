@@ -22,26 +22,27 @@ visibility: "user"
 
 根据用户提供的股票名称或代码，自动采集多维度数据，生成一份精美的**单页 HTML 深度分析报告**，可直接用浏览器打开、打印或分享。
 
-报告包含 **11 个章节（SEC 01–11）**：
+报告包含 **17 个主章节（SEC 01–17）**：
 
 | SEC | 章节 | 核心内容 |
 |-----|------|---------|
 | 01 | 基本面分析 | 营收/净利润/毛利率/ROE/研发费用率，核心指标卡片 |
-| 01B | 历年财务指标 | 近3年年度数据表（营收/净利润/毛利率/ROE/EPS） |
-| 02 | 新闻面（近30天） | 新闻情绪标注（正面🟢/中性🟡/负面🔴）+ 情绪统计 |
-| 03 | 综合评分 | 环形评分（4维度）+ 投资建议 |
-| 04 | 资金面分析 | 近5日主力净流入 + 当日资金拆解（超大单/大单/中单/小单） |
-| 05 | 技术面（完整指标） | RSI/MACD/MA/布林带/KDJ/量比，含信号标注 |
-| 06 | 业务与机构调研 | 产品收入拆分 + 最新机构调研Q&A全文 |
-| 07 | 估值与相对表现 | 历史估值通道（PS/PB近1年分位）+ 指数对比(Alpha) |
-| 08 | 同行对比 | 同行PE/PB/营收/净利润对比表 |
-| 09 | 股东结构 | 前十大股东（持股比例+较上期变动） |
-| 10 | 风险提示 | 具体风险点 + 非投资建议声明 |
-| 11 | 数据来源 | 各维度数据来源说明表 |
-| 12 | 融资融券与北向资金 | 融资余额趋势、融券余量、沪深港通持仓变化 |
-| 13 | 分析师评级与一致预期 | 券商评级分布、一致目标价、评级变动 |
-| 14 | 解禁日历与分红回购 | 限售股解禁时间表、历史分红率、回购进展 |
-| 15 | 大宗交易与龙虎榜 | 近30天大宗交易、龙虎榜上榜记录、席位动向 |
+| 02 | 历年财务指标 | 近3年年度数据表（营收/净利润/毛利率/ROE/EPS） |
+| 03 | 新闻面（近30天） | 新闻情绪标注（正面🟢/中性🟡/负面🔴）+ 情绪统计 |
+| 04 | 综合评分 | 环形评分（4维度）+ 投资建议 |
+| 05 | 资金面分析 | 近5日主力净流入 + 当日资金拆解（超大单/大单/中单/小单） |
+| 06 | 技术面（完整指标） | RSI/MACD/MA/布林带/KDJ/量比，含信号标注 |
+| 07 | 业务与机构调研 | 产品收入拆分 + 最新机构调研Q&A全文 |
+| 08 | 估值与相对表现 | 历史估值通道（PS/PB近1年分位）+ 指数对比(Alpha) |
+| 09 | 同行对比 | 同行PE/PB/营收/净利润对比表 |
+| 10 | 股东结构 | 前十大股东（持股比例+较上期变动） |
+| 11 | 融资融券与北向资金 | 融资余额/融券余量（若适用）+ 北向持股占比/变化趋势 |
+| 12 | 分析师评级与一致预期 | 券商评级分布、一致目标价、近期评级变动 |
+| 13 | 解禁日历与分红回购 | 限售股解禁时间表、历史分红记录、回购进展 |
+| 14 | 大宗交易与龙虎榜 | 近30日大宗交易记录、龙虎榜上榜记录及席位动向 |
+| 15 | 风险提示 | 具体风险点 + 非投资建议声明 |
+| 16 | 数据来源 | 各维度数据来源说明表 |
+| **17** | **🤖 AI 综合点评** | **AI 综合全部信息给出一句话总评、核心逻辑、优势/风险两栏、分类型投资者建议（保守/稳健/进取）、操作策略（买点/目标/止损/仓位）、5大跟踪信号、结语** |
 
 ---
 
@@ -73,7 +74,7 @@ visibility: "user"
 
 | 数据维度 | URL 模板 | 说明 |
 |---------|---------|------|
-| 股票详情页 | `https://quote.eastmoney.com/{market}{code}.html` | 实时行情、估值指标 |
+| 股票详情页 | `https://quote.eastmoney.com/{market}{code}.html` | 实时行情、估值指标（若返回 302，跟随重定向到 `https://quote.eastmoney.com/unify/cr/{secid}` 的新版页面） |
 | 个股资料(F10) | `https://emweb.securities.eastmoney.com/pc_hsf10/pages/index.html?type=web&code={market}{code}` | 公司概况、财务分析、股东研究 |
 | 财务分析 | `{F10_URL}#/cwfx` | 利润表、资产负债表、现金流量表 |
 | 股东研究 | `{F10_URL}#/gdyj` | 前十大股东、机构持仓 |
@@ -142,17 +143,23 @@ https://push2.eastmoney.com/api/qt/stock/fflow/daykline/get?secid={secid}&fields
 
 ### 数据获取优先级
 
-1. **API 直接调用** — 实时行情、资金流向、K线数据（最可靠）
-2. **web_fetch 解析网页** — 财务数据、融资融券、解禁日历等（API 失败时使用）
-3. **WebSearch** — 新闻、研报、分析师观点（补充信息）
-4. **无法获取** — 该章节标注"暂无数据"，不删除章节标题
+> ⚠️ **实测结论（2026-07 更新）**：东方财富 push2 / push2his API 在 curl 直连时经常返回 403 / 空数据（防爬 + 需要 cookie / IP 白名单）。**web_fetch 是当前最可靠的入口**。
+
+1. **web_fetch 解析东方财富网页** — **首选**。行情、财务、资金流向、股东、解禁、分红、回购、大宗交易、龙虎榜、质押。
+2. **WebSearch** — 首选补充。近30天新闻、分析师评级、目标价、研报摘要、专利/技术动态。
+3. **API 直接调用** — **仅在已知可访问环境（如带浏览器 cookie / 代理）时尝试**；curl 失败立即降级到 web_fetch。
+4. **无法获取** — 该章节标注"暂无数据"，不删除章节标题。
+
+**若 K 线 API 不可用（技术指标降级方案）**：
+- 从东方财富行情页可直接读出：最新价 / 52 周高低 / 5日均线 / 20日均线 / RSI 等已展示的指标
+- 未直接展示的 MACD / KDJ / BOLL 允许基于近期涨跌节奏做**定性估算**，并在 `tech.*_note` 里注明"估算值"，**不要留空**
 
 ### 特殊市场处理
 
 - **科创板股票（688开头）**：
   - 暂不纳入融资融券标的
   - 暂不纳入沪深港通（无北向资金数据）
-  - 以上两个维度的数据在 SEC 12 中标注"科创板股票暂不纳入"
+  - 以上两个维度的数据在 SEC 17（AI 综合点评）中标注"科创板股票暂不纳入"
 - **港股、美股**：
   - 部分数据维度（如融资融券、龙虎榜）可能不适用
   - 根据实际市场规则调整数据采集范围
@@ -200,11 +207,23 @@ https://searchapi.eastmoney.com/api/suggest/get?input={name}&type=14&token=DHASF
 
 **并行采集以下所有维度**，采集完毕后将数据保存为 JSON 文件（路径：`/tmp/stock_data.json`）。
 
+#### ⚠️ JSON 写入方式（重要）
+
+完整数据 JSON 体积通常 6-10 KB，包含 20+ 字段。**不要用 Write 工具一次性写入超长 content**——实测超过约 5 KB 时会触发 `file_path expected string, but received undefined` 之类的校验异常。
+
+**推荐做法（分块 Python 脚本）**：
+1. 写一个短脚本 `/tmp/build_json.py`，`d = {}` → 逐块 `d["fin_items"] = [...]` → `d["news"] = [...]` → ... → `json.dump(d, open("/tmp/stock_data.json","w"), ensure_ascii=False, indent=2)`
+2. 分 2-3 块追加：①stock/quote/fin_items/fin_table ②news/score/flow/tech/products ③survey/valuation/peers/holders/risks/sources/ai_analysis
+3. 后续追加块用 `d = json.load(open(...))` → 更新字段 → 重新 dump，避免覆盖。
+
+**优点**：绕开 Write payload 限制、避开 JSON 转义地雷（双引号/斜杠/emoji）、便于随时补充字段。
+
 #### 数据采集优先级
 
 1. **web_fetch 东方财富网页** — 获取结构化数据（行情、财务、资金流向、股东、解禁、分红、回购、大宗交易、龙虎榜、质押）
 2. **WebSearch** — 获取新闻、分析师评级、研报摘要、专利/技术动态
-3. **计算技术指标** — 从 K 线数据本地计算 RSI、MACD、MA、布林带、KDJ
+3. **API 调用** — 仅在已知可访问环境中尝试；失败立即降级 web_fetch
+4. **计算技术指标** — 从 K 线数据本地计算 RSI、MACD、MA、布林带、KDJ；若 K 线不可得，允许基于行情页展示的均线/RSI + 涨跌节奏做定性估算，`*_note` 中注明"估算值"
 
 #### WebSearch 使用说明
 
@@ -243,8 +262,7 @@ topic: news
 
 #### 缺失数据处理
 
-- **API 调用失败** → 立即切换到 `web_fetch` 方式
-- **web_fetch 解析失败** → 标注"暂无数据"，不删除章节标题
+- **web_fetch 抓取失败** → 尝试 API（若环境允许） / 换搜索关键词 / 通过 WebSearch 从财经媒体取数
 - **数据明显异常** → 二次核实，无法核实则标注"数据待核实"
 - **章节无数据** → 显示"暂无数据"提示，保持章节结构完整
 
@@ -330,6 +348,7 @@ JSON 格式（嵌套结构，与 `references/build.py` 一致）：
     "ma": {"ma5": 15.12, "ma20": 13.29, "note": "价格站上所有均线"},
     "vol_ratio": 1.32,
     "vol_note": "今日成交量略高于近5日均量",
+    "alpha_index_name": "科创板指数",
     "alpha": [
       {"days": 3, "stock": 8.2, "index": 3.1, "alpha": 5.1},
       {"days": 5, "stock": 12.4, "index": 4.8, "alpha": 7.6},
@@ -404,26 +423,141 @@ JSON 格式（嵌套结构，与 `references/build.py` 一致）：
     {"dim": "同行估值对比", "source": "东方财富 API + WebSearch", "note": "PE/PB/PS 来自实时行情"},
     {"dim": "前十大股东", "source": "WebSearch + 公司季报", "note": "2026Q1 一季报"},
     {"dim": "近期公告", "source": "WebSearch + 东方财富公告API", "note": "近30天公告列表"}
-  ]
+  ],
+  "ai_analysis": {
+    "overview": "一句话总评（可含 <b> 标签）",
+    "thesis": "核心投资逻辑，2-4 段，用 <br> 分行",
+    "strengths": ["优势1（可含<b>）", "优势2", "优势3", "优势4", "优势5"],
+    "weaknesses": ["风险1", "风险2", "风险3", "风险4", "风险5"],
+    "advice_by_profile": [
+      {"profile": "🛡️ 保守型投资者", "stance": "建议回避", "tone": "red",   "advice": "..."},
+      {"profile": "⚖️ 稳健型投资者", "stance": "观望等待", "tone": "amber", "advice": "..."},
+      {"profile": "🚀 进取型投资者", "stance": "小仓位跟踪", "tone": "green", "advice": "..."}
+    ],
+    "action_plan": {
+      "ideal_entry": "¥13.0 - 14.0",
+      "current_stance": "¥16.62 属高位，追高性价比低",
+      "target": "短期 ¥18-19 / 中期 ¥22-25",
+      "stop_loss": "破 ¥13 或 Q2 增速跌破 +25%",
+      "position": "单只不超过总仓位 5%"
+    },
+    "triggers": {
+      "watch": ["🎯 2026Q2 财报兑现", "🎯 新一代 SoC 发布", "🎯 大客户订单", "⚠️ 解禁减持", "⚠️ 主力资金"]
+    },
+    "ending": "总结性寄语，包含 <b> 强调标签"
+  }
 }
 ```
 
 **关键格式说明**：
-- `quote.mktcap_y`：总市值，单位**元**（不是亿）
+- `quote.mktcap_y`：总市值，单位**元**（不是亿）。**换算示例**：`37410000000` → 显示 "374.1 亿"（build.py 内部 ÷1e8）；`3100000000` → "31 亿"。
 - `fin_items`：6个核心财务指标卡片，每个有 `label/val/sub/note/color`
-- `fin_table.rows[].cells`：表格行，可包含 HTML 标签（如 `<b>`）
+- `fin_table.rows[].cells`：表格行文本。**若整行需要强调，用 `highlight: true`** 让 build.py 自动加粗背景色；不要在 cell 内再嵌 `<b>` 造成双重强调（除非只想突出单个字段）
 - `fin_table.trend`：趋势分析，2个卡片（营收趋势/净利润趋势）
 - `flow.today_net`：今日主力净额，**单位万元**（不是元）
 - `flow.bars`：资金面柱状图数据，每个有 `label/val/unit/sign`
 - `flow.detail`：资金面详细说明（可包含 HTML 标签）
 - `tech.alpha`：相对指数 Alpha 数据，数组，每个有 `days/stock/index/alpha`
+- `tech.alpha_index_name`：Alpha 对比的指数名称，根据股票所属市场自动设置：A股主板/创业板用"沪深300"，科创板用"科创板指数"，港股用"恒生科技指数"，美股用"纳斯达克"
 - `products`：产品收入拆分，每个有 `name/pct/color`，`pct` 是百分比数字（0-100）
 - `survey.qas`：机构调研 Q&A，每个有 `q/a`
 - `valuation.ps_pct` / `pb_pct`：近1年分位数（0-100）
 - `holders[].pct`：**带百分号的字符串**（如 `"15.66%"`）
 - `holders[].pct_color` / `chg_color`：`"blue"`/`"red"`/`"green"`/`"amber"`/`"purple"`/`"muted"`
+- `holders[].chg`：**规范为四选一** —— `"不变"` / 带符号数值字符串（`"+0.12%"` / `"-0.35%"`）/ `"新进"` / `"减持"`。避免 `"新进/加仓"` 这类多义值
 - `risks`：风险提示数组，每个元素是一段文字
 - `sources`：数据来源数组，每个有 `dim/source/note`
+- `margin`：**融资融券与北向资金**（SEC 11），结构：
+  ```json
+  "margin": {
+    "is_margin_target": true,           // 是否为融资融券标的
+    "is_hk_connect": true,              // 是否为沪深港通标的
+    "margin_balance": "12.50亿",        // 最新融资余额（字符串，含单位）
+    "margin_balance_chg": "+5.2%",      // 较上期变化
+    "margin_trend": "近5日融资余额持续上升，杠杆资金做多意愿强",
+    "short_selling": "1200万股",        // 最新融券余量
+    "hk_connect_pct": "2.35%",         // 北向资金持股占比
+    "hk_connect_chg": "+0.15%",        // 较上期变化
+    "hk_connect_trend": "北向资金近30日持续加仓"
+  }
+  ```
+  > 若非融资融券标的：`is_margin_target: false`，函数自动显示"暂非融资融券标的"；科创板/H股类似处理。
+- `analyst`：**分析师评级与一致预期**（SEC 12），结构：
+  ```json
+  "analyst": {
+    "rating_count": {"买入": 8, "增持": 3, "中性": 1, "减持": 0},
+    "consensus_target": "47.00",        // 一致目标价（字符串，含单位元）
+    "target_high": "63.00",
+    "target_low": "35.00",
+    "recent_ratings": [
+      {"date": "2026-04-01", "org": "西南证券", "rating": "买入", "target": "63.00"},
+      {"date": "2026-03-15", "org": "中信证券", "rating": "买入", "target": "52.00"}
+    ],
+    "note": "12家机构一致推荐，目标价区间35-63元"
+  }
+  ```
+- `corporate_actions`：**解禁日历与分红回购**（SEC 13），结构：
+  ```json
+  "corporate_actions": {
+    "lockup": [
+      {"date": "2026-10-15", "shares": "1200万股", "pct": "1.5%", "type": "首发原股东限售"}
+    ],
+    "dividend_history": [
+      {"year": "2025", "amount": "10派2.00元", "yield": "0.5%"}
+    ],
+    "buyback": "截至2026Q1，公司尚未实施回购计划",
+    "note": "下一次大规模解禁在2026年10月，关注股东减持压力"
+  }
+  ```
+- `block_lhb`：**大宗交易与龙虎榜**（SEC 14），结构：
+  ```json
+  "block_lhb": {
+    "block_trades": [
+      {"date": "2026-06-15", "price": "35.20", "vol": "50万股", "amount": "1760万", "premium": "-1.2%", "buyer": "机构专用"}
+    ],
+    "lhb_records": [
+      {"date": "2026-04-22", "reason": "日涨幅偏离值达7%", "net_buy": "8500万", "main_buyer": "机构专用"}
+    ],
+    "note": "近30日大宗交易以机构买入为主，龙虎榜上榜2次，机构净买入"
+  }
+  ```
+- `ai_analysis`：**AI 综合点评（SEC 17），可选但强烈推荐生成**
+  - `overview`：一句话总评（可含 `<b>` 标签）
+  - `thesis`：核心投资逻辑，2-4 段用 `<br>` 分行
+  - `strengths[]` / `weaknesses[]`：核心优势/风险列表，各 3-5 条
+  - `advice_by_profile[]`：分类型投资者建议数组，每项包含 `profile`（含 emoji 的类型名）/ `stance`（态度标签）/ `tone`（`red`/`amber`/`green`/`blue`）/ `advice`（具体建议）
+  - `action_plan`：操作策略，可选字段 `ideal_entry` / `current_stance` / `target` / `stop_loss` / `position`
+  - `triggers.watch[]`：后续需关注的信号列表（3-6 条，可用 🎯 / ⚠️ 前缀）
+  - `ending`：结语，AI 总结性寄语
+
+> ⚠️ **HTML 转义必读（2026-07 经验教训）**
+>
+> `build.py` 内部会对所有用户提供的文本字段自动调用 `esc()` 转义 `& < >` 三字符，**避免破坏 HTML 结构**。但**以下内容必须保持原样不被转义**：
+>
+> | 字段 | 允许的 HTML 标签 | 说明 |
+> |------|-----------------|------|
+> | `ai_analysis.overview` / `thesis` | `<b>`, `<br>`, `<i>` | AI 加粗强调 |
+> | `ai_analysis.advice_by_profile[].advice` | `<b>`, `<br>`, `<i>` | 段落内强调 |
+> | `ai_analysis.triggers.watch[]` | `<b>` | 信号强调 |
+> | `ai_analysis.ending` | `<b>`, `<br>`, `<i>` | 结语强调 |
+> | `fin_table.rows[].cells[]` | `<b>...</b>` | 单 cell 加粗 |
+> | `fin_table.trend[].text` | 无（纯文本） | 趋势说明 |
+> | `news[].title` | 无 | 新闻标题 |
+> | `survey.qas[].q/a` | 无 | 调研问答 |
+> | `risks[]` | 无 | 风险文字 |
+> | `holders[].name` | 无 | 股东名 |
+> | `flow.detail` | `<b>`, `<span class="up/down">`, `<br>` | 资金说明 |
+> | `peers.note` | 无 | 同行说明 |
+>
+> **绝对禁止在文本中直接出现**：
+> - 原始的 `<` 或 `>` 符号（如 `MA5<MA20`）→ 会被 `esc()` 转成 `&lt;`，**用户看到的也是字面字符**，不会破坏布局
+> - 未配对的 HTML 标签（`<MA20=445>` 这种伪标签）→ 一定要用全角符号 `＜` `＞` 或 `MA5小于MA20` 替代
+> - `&` 单独使用（不是 `&amp;`）→ 必须先转义
+>
+> **AI 写入 JSON 时的规范**：
+> - 想加粗用 `<b>xxx</b>`，会被保留
+> - 想换行用 `<br>`，会被保留
+> - 想表达比较关系：用文字 "MA5 小于 MA20" 或 "MA5<MA20" 中的 `<` 会被转义为 `&lt;`，**这是正确行为**
 
 
 ---
@@ -450,6 +584,24 @@ JSON 格式（嵌套结构，与 `references/build.py` 一致）：
 
 ---
 
+### Step 2.5：生成 AI 综合点评（`ai_analysis`）
+
+在计算完评分后，基于已采集的**全部维度信息**（基本面、新闻、资金面、技术面、估值、同行、股东、机构调研），生成 SEC 13 的 AI 综合点评。要求：
+
+1. **一句话总评（overview）**：给该股一个精准的"人设"定位，例如"业绩拐点+主题稀缺"、"高股息现金牛"、"衰退期反弹"，风格可有观点、可用 `<b>` 强调
+2. **核心逻辑（thesis）**：2-4 段说清楚"这只股票为什么值得（或不值得）当前价格"，用 `<br>` 分行
+3. **优势 / 风险各 3-5 条（strengths / weaknesses）**：不要抽象，要引用具体数据（营收 +47%、PS 12x、主力净流出 6240 万等）
+4. **分类型建议（advice_by_profile）**：必须给保守型/稳健型/进取型三档，`tone` 用颜色区分，各自给出立场（stance）和具体动作
+5. **操作策略（action_plan）**：给出理想买入区间、目标价、止损位、仓位建议
+6. **跟踪信号（triggers.watch）**：3-6 条 "需要跟踪什么才能确认/证伪当前判断"
+7. **结语（ending）**：站在读者角度，给一段可操作的建议，避免模板式"投资有风险"废话（这句声明由 SEC 11 承担）
+
+写作口吻：**像一位有观点、说人话的资深行研分析师**，避免流水账、避免"综上所述"式官腔。允许在 HTML 文本里使用 `<b>`、`<br>`、emoji。
+
+将结果写入 JSON 的 `ai_analysis` 字段，重新保存 `/tmp/stock_data.json`。
+
+---
+
 ### Step 3：运行 build.py 生成 HTML 报告
 
 **重要：不要直接在对话中输出 HTML 代码，用脚本生成。**
@@ -469,7 +621,7 @@ python3 ~/.workbuddy/skills/stock-deep-report/references/build.py /tmp/stock_dat
 
 `build.py` 已包含：
 - 完整的 CSS 样式（v5 蓝紫精致风，A股涨红跌绿配色）
-- 全部 11 个 SEC 章节的 HTML 模板
+- 全部 17 个 SEC 章节的 HTML 模板
 - CSS 花括号冲突处理（用 `___CSS___` 占位符 + `replace()`）
 - 单列堆叠布局，每张卡片独占一行
 
@@ -503,7 +655,7 @@ python3 ~/.workbuddy/skills/stock-deep-report/references/build.py /tmp/stock_dat
 
 ### 非投资建议声明（必须包含）
 
-报告最下方（SEC 10）必须包含以下声明：
+报告最下方（SEC 15）必须包含以下声明：
 
 > ⚠️ **非投资建议声明**
 > 本报告数据来源于东方财富、同花顺等公开信息，力求准确但不保证完整性。报告中的评分、价格区间、投资建议等内容仅供参考，不构成任何证券投资建议或投资决策依据。股市有风险，投资需谨慎。
